@@ -1,0 +1,5 @@
+[alias]
+lint = "clippy --workspace --all-targets --locked -- -D warnings"
+
+[build]
+rustdocflags = ["-Dwarnings", "--deny=rustdoc::broken_intra_doc_links", "--deny=rustdoc::private_intra_doc_links"]
