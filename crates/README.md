@@ -1,8 +1,10 @@
 # Rust libraries
 
-`fishnet-core` owns protocol types, fixture responses, the read-only tool, task
-state, execution limits, completion checks, run journals, and local incidents.
-It does not depend on the CLI or another agent runtime.
+`fishnet-core` owns the execution loop, typed state, policy, providers, tools,
+checks, journals, and local diagnostics. It does not depend on a client or an
+external agent runtime.
 
-The CLI is the other workspace package. Other architecture components remain
-future work. Add crate boundaries when a tested responsibility needs them.
+`fishnet-service`, under `services/daemon`, adds durable task coordination,
+authenticated transport, and a shared client. CLI and future TUI service commands
+use that contract. The CLI package retains explicit standalone M1/M2 utilities.
+Add crate boundaries when a tested responsibility needs them.

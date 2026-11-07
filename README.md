@@ -13,6 +13,7 @@ Run `make` or `make help` to see the available commands and examples.
 make setup  # Fetch locked dependencies; network access can be required
 make build  # Build offline
 make run    # Run a deterministic offline fixture
+make daemon # Start the local task service
 make check  # Run the complete quality checks
 ```
 
@@ -63,20 +64,21 @@ for enforced rules and manual code review requirements.
 
 ## Status and boundaries
 
-M1 and M2 are complete on the local macOS ARM64 host. Fishnet used the connected
+M1, M2, and M3 are complete on the local macOS ARM64 host. Fishnet used the connected
 ChatGPT account to implement its own `inspect --summary` feature. The host's six
 independent checks passed. See [M2 evidence](docs/m2-evidence.md),
 [M1 evidence](docs/m1-evidence.md), [implementation status](docs/implementation.md),
-and [technology decisions](docs/decisions/README.md).
+[M3 service evidence](docs/m3-evidence.md), and
+[technology decisions](docs/decisions/README.md).
 
 Use [the development workflow](docs/using-fishnet.md) to connect a ChatGPT account
 and prepare a bounded coding task. API-key OpenAI and explicit Responses-compatible
 routes remain separate. Other native provider protocols need adapters and tests.
 
 Approved programs run with your OS permissions. Use reviewed task grants and
-trusted projects. There is no OS sandbox, daemon, TUI, plugin host, knowledge
-backend, memory generation, or policy promotion. The next planned milestone is
-M3: the service and remote-client contract.
+trusted projects. The local daemon and common task client are available; see
+[service usage](services/daemon/README.md). There is no OS sandbox, TUI, plugin
+host, knowledge backend, memory generation, or policy promotion. M4 is next.
 
 Read [AGENTS.md](AGENTS.md), [requirements](docs/requirements.md), and
 [architecture](docs/architecture.md) before making changes.

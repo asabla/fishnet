@@ -1,6 +1,6 @@
 # Implementation plan
 
-M1 is complete as of 2026-11-07. M2 is complete as of 2026-11-07. M3 through M7 are pending. Each stage must produce a usable increment and evidence. See [M1 acceptance evidence](m1-evidence.md).
+M1 is complete as of 2026-11-07. M2 is complete as of 2026-11-07. M3 is complete as of 2026-11-07. M4 through M7 are pending. Each stage must produce a usable increment and evidence. See [M1 acceptance evidence](m1-evidence.md).
 
 ## M1: Deterministic local vertical slice
 
@@ -30,6 +30,8 @@ Select one direct API provider. Preserve native content needed across turns, str
 Acceptance: opt-in live smoke test works with externally supplied credentials; malformed responses and interrupted streams have defined outcomes; final effective arguments are checked before execution; uncertain side effects are not blindly retried. Measure harness time separately from provider, tool, and user wait.
 
 ## M3: Service and remote-client contract
+
+Status: complete on the local macOS ARM64 host. Durable acceptance, authenticated commands, idempotency, approval ownership, bounded consumers, reconnect snapshots, and restart inspection pass offline and real loopback checks. See [M3 evidence](m3-evidence.md).
 
 Expose the existing core through a long-running daemon. Move the CLI onto the same command/event contract. Add authentication, command idempotency, reconnect cursors, snapshot recovery, and bounded consumers. Record API/transport decisions. Add a small headless client fixture; a web UI is not required.
 

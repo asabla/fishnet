@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup build run cli fmt fmt-check test lint docs check clean
+.PHONY: help setup build run cli fmt fmt-check test lint docs check clean daemon
 
 help: ## Show development commands and examples
 	@printf '%s\n\n' 'fishnet development commands'
@@ -40,3 +40,6 @@ check: ## Run the complete quality checks used by CI
 
 clean: ## Remove Cargo build artifacts; keep local runs and account files
 	cargo clean
+
+daemon: ## Start the local task service; host options use ARGS="..."
+	cargo run --offline --locked -p fishnet-service --bin fishnetd -- $(ARGS)

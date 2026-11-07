@@ -28,6 +28,7 @@ not print a message; the default `help` recipe prints the command list.
 | --- | --- |
 | `make setup` | Fetch locked dependencies; network access can be required |
 | `make build` | Build the workspace offline |
+| `make daemon` | Start the local task service; use `ARGS` for host options |
 | `make run` | Run the default offline fixture |
 | `make cli ARGS="..."` | Pass arguments to the local CLI; no arguments prints CLI help |
 | `make fmt` | Format Rust source files |
