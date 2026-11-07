@@ -511,3 +511,41 @@ fn restart_after_an_unrecorded_edit_result_preserves_effect_and_unknown_state() 
     }
     Ok(())
 }
+
+#[tokio::test]
+async fn read_only_task_grants_omit_write_tools_and_still_deny_direct_write_calls() -> TestResult {
+    let root = Root::new()?;
+    let mut spec = root.spec();
+    spec.allowed_writes.clear();
+    spec.required_changes.clear();
+    spec.commands.clear();
+    spec.checks.clear();
+    let names = workspace::tool_schemas(&spec)
+        .into_iter()
+        .filter_map(|tool| {
+            tool.get("name")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(names, vec!["read_file", "list_files"]);
+    let workspace = Workspace::open(spec)?;
+    let control = Cancellation::default();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let ModelReply::ToolCall(call) = edit() else {
+        return Err("missing edit".into());
+    };
+    assert!(
+        matches!(workspace.execute(&call,&control,deadline,8192).await,Err(error) if error.kind==ErrorKind::PermissionDenied)
+    );
+    let read = ToolCall {
+        name: "read_file".into(),
+        arguments: json!({"path":"work.txt","offset":0,"max_bytes":100}),
+    };
+    assert!(matches!(
+        workspace.execute(&read, &control, deadline, 8192).await?,
+        ToolResult::Output { .. }
+    ));
+    assert_eq!(fs::read_to_string(root.0.join("work.txt"))?, "original\n");
+    Ok(())
+}

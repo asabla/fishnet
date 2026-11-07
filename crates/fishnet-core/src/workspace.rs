@@ -517,7 +517,7 @@ pub fn tool_schemas(spec: &WorkspaceSpec) -> Vec<Value> {
             json!({"command_id":{"type":"string","enum":spec.commands.iter().map(|command| &command.id).collect::<Vec<_>>()}}),
         ),
     ];
-    definitions.into_iter().filter(|(name,_,_)| *name != "run_command" || !spec.commands.is_empty()).map(|(name,description,properties)| {
+    definitions.into_iter().filter(|(name,_,_)| (*name != "run_command" || !spec.commands.is_empty()) && (*name != "replace_text" || !spec.allowed_writes.is_empty())).map(|(name,description,properties)| {
         let required = properties.as_object().map(|fields| fields.keys().cloned().collect::<Vec<_>>()).unwrap_or_default();
         json!({"type":"function","name":name,"description":description,"strict":true,
             "parameters":{"type":"object","properties":properties,"required":required,"additionalProperties":false}})
