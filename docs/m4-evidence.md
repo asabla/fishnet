@@ -374,3 +374,56 @@ This remains M4 work. Conversational turns, transient streaming, rich Markdown,
 and inline diffs are still pending. Browser cell previews and PTYs do not
 establish native terminal appearance, accessibility, other OS support, or hosted
 CI qualification. The earlier live coding trial remains separate evidence.
+
+## Launch-path and terminal-colour correction
+
+The user reported that actual launches did not resemble the previews. The
+installed and checkout binaries contained the new layout. Capturing their real
+terminal output found a verification gap: validation inherited `NO_COLOR=1`,
+while the TestBackend previews retained RGB styles. The terminal stream emitted
+empty combined colour sequences, so it lost the preview's shaded surfaces.
+Earlier text/lifecycle checks and colour previews did not establish actual
+terminal colour output. The earlier "colour-enabled" claim is not sufficient
+colour-encoding evidence. Also, `fishnet run` still selected the JSON fixture.
+
+[ADR-0009](decisions/0009-launch-and-terminal-colour.md) records the correction.
+`fishnet run` is now an interactive alias. The standalone utility is named
+`fishnet fixture`, and `make fixture` uses that name. The fixture loop and run
+records are unchanged. The existing bootstrap inspection check now calls the
+renamed fixture command; its outcome, count, size, and no-replay assertions are
+unchanged. The first full check failed at that stale invocation. Its log remains
+in `.fishnet/m4-launch-diagnosis/check.log`; the corrected check passed separately.
+
+`--color auto` respects nonempty NO_COLOR. Monochrome mode uses reverse-video
+surfaces and labels the mode in the footer. `--color always` enables the colour
+theme explicitly; `--color never` selects monochrome explicitly. The application
+does not change environment variables.
+
+Checks actually run:
+
+- `./scripts/check.sh` passed with **95 tests**, formatting, strict Clippy, and
+  strict rustdoc. One helper test is marked ignored for direct harness execution;
+  the parent test invokes it in four isolated processes for all colour-policy
+  cases. No colour case is skipped by the default parent test.
+- The backend test draws actual cells through Crossterm into terminal bytes.
+  It checks RGB accents when enabled and reverse video when disabled. It rejects
+  empty combined colour sequences. These checks need no interactive terminal,
+  network, or account. A retained monochrome row snapshot uses the same resolved
+  appearance as terminal drawing.
+- Fresh 80x24 PTYs verified the installed command, checkout command, run alias,
+  and `make run`, all with `--color always` and NO_COLOR set. Each emitted the
+  new prompt, model row, wordmark, and RGB accent sequence. A separate installed
+  auto-mode run emitted reverse video and no RGB. All exited normally.
+- The colour-enabled fixture/reject/detach/restart flow also passed. Fixture
+  `a2c463a7c1456916e0a165ce2975910e5224283ec6f4b675559a36d9f326216c`
+  reached independently verified success. Rejected coding grant
+  `c02453317f5591e0241d2005da9fce0e47349772e00f9c99ffb9c8abc916a461`
+  started no coding run. Source and journal state remained unchanged across
+  inspection/restart; terminal settings were restored. No real provider was used.
+- `make install` replaced the installed command with the correction.
+
+Evidence is under `.fishnet/m4-launch-diagnosis`: the initial diagnostic result,
+corrected launch results and terminal captures, full-check logs, and isolated
+fixture receipts. These verify routing, terminal encoding, and lifecycle. The
+user's specific native terminal appearance still requires their retest; no
+native screenshot is claimed. M4 remains active and M5 is pending.

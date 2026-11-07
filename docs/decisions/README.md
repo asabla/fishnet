@@ -12,6 +12,8 @@ Accepted decisions:
 
 - [ADR-0008: Conversation prompt and durable transcript projection](0008-conversation-prompt-and-transcript.md)
 
+- [ADR-0009: Launch aliases and terminal colour policy](0009-launch-and-terminal-colour.md)
+
 Fixed user requirements are in [requirements](../requirements.md).
 
 Use [template.md](template.md). Number records sequentially when needed. Record proposed, accepted, rejected, or superseded status. Include evidence, alternatives, consequences, and a reversal path. Routine reversible choices do not require stopping for user approval.

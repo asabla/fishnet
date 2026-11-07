@@ -1,8 +1,20 @@
 # Terminal interface
 
-Run `fishnet` in the project directory, or `make run` from this checkout. The
+Run `fishnet` or `fishnet run` in the project directory, or `make run` from this checkout. The
 command opens the interface and starts or reuses its private local service.
 Startup makes no model request. The service owns accepted work after detach.
+
+## Terminal colours
+
+Use `fishnet --color always` to select the colour theme explicitly. From this
+checkout, use `make run ARGS="--color always"`. `--color auto` is the default;
+it respects a nonempty `NO_COLOR` variable. In that case, input and tool blocks
+use reverse video so their boundaries remain visible. `--color never` selects
+that monochrome presentation explicitly. No environment variable is changed.
+
+The colour previews show the colour theme. Monochrome mode is labelled in the
+footer. Actual terminal escape bytes are checked separately from renderer cells.
+`fishnet run` opens this interface. `fishnet fixture` prints offline JSON events.
 
 ## Write a task
 

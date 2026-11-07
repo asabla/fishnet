@@ -76,7 +76,7 @@ fn cli_outcomes_and_restart_inspection_are_machine_readable() -> TestResult {
         ("repeated-invalid", 3, "unverified_completion"),
         ("negative", 0, "verified_success"),
     ] {
-        let output = Store::command("run")
+        let output = Store::command("fixture")
             .args(["--scenario", scenario, "--store"])
             .arg(&store.0)
             .output()?;
@@ -113,7 +113,7 @@ fn cli_outcomes_and_restart_inspection_are_machine_readable() -> TestResult {
 fn killed_process_leaves_inspectable_evidence_and_does_not_replay() -> TestResult {
     let store = Store::new();
     let mut child = RunningChild(
-        Store::command("run")
+        Store::command("fixture")
             .args([
                 "--step-delay-ms",
                 "500",
@@ -166,7 +166,7 @@ fn killed_process_leaves_inspectable_evidence_and_does_not_replay() -> TestResul
 fn sigint_persists_cancellation_and_exits_130() -> TestResult {
     let store = Store::new();
     let mut child = RunningChild(
-        Store::command("run")
+        Store::command("fixture")
             .args([
                 "--step-delay-ms",
                 "10000",
@@ -210,10 +210,10 @@ fn sigint_persists_cancellation_and_exits_130() -> TestResult {
 fn cli_rejects_invalid_options_without_creating_records() -> TestResult {
     let store = Store::new();
     for arguments in [
-        vec!["run", "--scenario", "live-provider"],
-        vec!["run", "--max-output-bytes", "9999999"],
-        vec!["run", "--max-provider-calls", "0"],
-        vec!["run", "--unknown", "value"],
+        vec!["fixture", "--scenario", "live-provider"],
+        vec!["fixture", "--max-output-bytes", "9999999"],
+        vec!["fixture", "--max-provider-calls", "0"],
+        vec!["fixture", "--unknown", "value"],
         vec!["inspect", "../escape"],
     ] {
         let output = Command::new(env!("CARGO_BIN_EXE_fishnet"))
@@ -242,6 +242,7 @@ fn command_help_and_headless_start_do_not_start_services_or_request_accounts() -
         vec!["models", "--help"],
         vec!["code", "--help"],
         vec!["run", "--help"],
+        vec!["fixture", "--help"],
         vec!["inspect", "--help"],
     ] {
         let output = Command::new(env!("CARGO_BIN_EXE_fishnet"))
@@ -254,6 +255,36 @@ fn command_help_and_headless_start_do_not_start_services_or_request_accounts() -
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(String::from_utf8_lossy(&output.stdout).contains("fishnet"));
+    }
+    assert!(!store.0.join(".fishnet").exists());
+    Ok(())
+}
+
+#[test]
+fn run_is_an_interactive_alias_and_accepts_the_colour_option() -> TestResult {
+    let store = Store::new();
+    fs::create_dir(&store.0)?;
+    for args in [
+        vec!["run", "--help"],
+        vec!["tui", "--help"],
+        vec!["--color", "always", "--help"],
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_fishnet"))
+            .args(args)
+            .current_dir(&store.0)
+            .output()?;
+        assert!(output.status.success());
+        let help = String::from_utf8(output.stdout)?;
+        assert!(help.contains("terminal interface"));
+        assert!(help.contains("--color auto|always|never"));
+    }
+    for args in [vec!["run", "--no-start"], vec!["--color", "invalid"]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_fishnet"))
+            .args(args)
+            .current_dir(&store.0)
+            .output()?;
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
     }
     assert!(!store.0.join(".fishnet").exists());
     Ok(())

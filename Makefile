@@ -21,7 +21,7 @@ run: ## Open fishnet; start the local service automatically
 	cargo run --offline --locked -p fishnet-cli -- $(ARGS)
 
 fixture: ## Run an offline JSON fixture; pass options with ARGS="..."
-	cargo run --offline --locked -p fishnet-cli -- run $(ARGS)
+	cargo run --offline --locked -p fishnet-cli -- fixture $(ARGS)
 
 cli: ## Run a command with ARGS="..."; no arguments opens fishnet in a terminal
 	cargo run --offline --locked -p fishnet-cli -- $(ARGS)

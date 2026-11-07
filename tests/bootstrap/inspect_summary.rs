@@ -16,7 +16,7 @@ fn compact_inspection_retains_outcome_and_counts_without_full_events() -> Result
     let store = std::env::temp_dir().join(format!("fishnet-summary-{}", std::process::id()));
     fs::create_dir_all(&store)?;
     let result = Command::new(binary())
-        .args(["run", "--scenario", "success", "--store"])
+        .args(["fixture", "--scenario", "success", "--store"])
         .arg(&store)
         .output()?;
     assert!(result.status.success());

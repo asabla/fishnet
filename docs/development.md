@@ -45,7 +45,9 @@ not print a message; the default `help` recipe prints the command list.
 For fixture options, use `make fixture ARGS="--scenario negative"`. For inspection,
 use `make cli ARGS="inspect RUN_ID --summary"`. `ARGS` is a local developer
 command-line convenience. It does not change the core's tool authorization.
-Live account and coding commands require explicit CLI arguments. Cargo's
+`fishnet run` opens the TUI; `fishnet fixture` runs the JSON fixture utility.
+Use `make run ARGS="--color always"` to enable the colour theme when `NO_COLOR`
+is set. Live account and coding commands require explicit CLI arguments. Cargo's
 `--offline` flag controls dependency access, not the application's provider I/O.
 
 Make adds a discoverable entry point without a new task-runner dependency. The

@@ -28,11 +28,11 @@ The local service stays alive when the terminal client detaches.
 Use --help on a command for options. Use --json on task/account commands for scripts.
 
 Advanced:
-  fishnet tui [--connection PATH] [--attach ID] [--no-start]
+  fishnet run|tui [--color auto|always|never] [--connection PATH] [--attach ID]
   fishnet serve [--allow-code] [SERVICE_OPTIONS]
   fishnet task list|submit|status|watch|cancel|approve|reject [ID] [OPTIONS]
   fishnet code --task PATH [PROVIDER_OPTIONS]  Standalone coding utility
-  fishnet run [--scenario NAME]              Offline JSON fixture utility
+  fishnet fixture [--scenario NAME]          Offline JSON fixture utility
   fishnet inspect RUN_ID [--summary]         Offline JSON journal inspection
 
 Exit codes: 0 successful command/verified task, 2 error, 3 unverified, 130 cancelled.
@@ -46,7 +46,7 @@ struct Arguments {
     delay_ms: u64,
 }
 
-fn parse_arguments() -> Result<Option<Arguments>, String> {
+fn parse_fixture_arguments() -> Result<Option<Arguments>, String> {
     let mut args = env::args().skip(1);
     let Some(command) = args.next() else {
         return Ok(None);
@@ -54,8 +54,8 @@ fn parse_arguments() -> Result<Option<Arguments>, String> {
     if command == "--help" || command == "-h" {
         return Ok(None);
     }
-    if command != "run" {
-        return Err("expected run".into());
+    if command != "fixture" {
+        return Err("expected fixture".into());
     }
     let mut parsed = Arguments {
         store: ".fishnet/runs".into(),
@@ -97,7 +97,7 @@ fn parse_arguments() -> Result<Option<Arguments>, String> {
     Ok(Some(parsed))
 }
 
-fn execute(args: Arguments) -> Result<u8, Box<dyn std::error::Error>> {
+fn execute_fixture(args: Arguments) -> Result<u8, Box<dyn std::error::Error>> {
     let stdout = io::stdout();
     let mut output = stdout;
     let cancellation = Cancellation::default();
@@ -151,10 +151,11 @@ fn dispatch() -> Result<u8, Box<dyn std::error::Error>> {
             writeln!(io::stdout(), "fishnet {}", env!("CARGO_PKG_VERSION"))?;
             Ok(0)
         }
-        Some("tui") => fishnet_tui::terminal::launch(args).map(|()| 0),
-        Some("--task" | "--attach" | "--model" | "--account" | "--connection" | "--no-start") => {
-            fishnet_tui::terminal::launch(first.into_iter().chain(args)).map(|()| 0)
-        }
+        Some("run" | "tui") => fishnet_tui::terminal::launch(args).map(|()| 0),
+        Some(
+            "--task" | "--attach" | "--model" | "--account" | "--connection" | "--no-start"
+            | "--color",
+        ) => fishnet_tui::terminal::launch(first.into_iter().chain(args)).map(|()| 0),
         Some("attach") => {
             let id = args
                 .next()
@@ -173,7 +174,7 @@ fn dispatch() -> Result<u8, Box<dyn std::error::Error>> {
         Some("task") => fishnet_service::cli::execute(args),
         Some("auth") => account::execute(args, false),
         Some("models") => account::execute(args, true),
-        Some(command @ ("code" | "inspect" | "run")) => {
+        Some(command @ ("code" | "inspect" | "fixture")) => {
             let args = args.collect::<Vec<_>>();
             if args
                 .iter()
@@ -185,7 +186,7 @@ fn dispatch() -> Result<u8, Box<dyn std::error::Error>> {
                 match command {
                     "code" => coding::execute(args.into_iter()),
                     "inspect" => inspection::execute(args.into_iter()),
-                    _ => legacy(),
+                    _ => run_fixture(),
                 }
             }
         }
@@ -202,15 +203,15 @@ fn advanced_help(command: &str) -> io::Result<()> {
             "fishnet inspect RUN_ID [--store DIR] [--summary]\nRead a local run journal without a service, account, or tool replay. Output is JSON."
         }
         _ => {
-            "fishnet run [--scenario NAME] [--store DIR] [--deadline-ms N]\n            [--step-delay-ms N] [--max-output-bytes N] [--max-provider-calls N]\nOffline JSON fixture utility. Scenarios: success, unverified, check-failure,\nrepeated-invalid, negative, provider-failure. Default store: .fishnet/runs."
+            "fishnet fixture [--scenario NAME] [--store DIR] [--deadline-ms N]\n            [--step-delay-ms N] [--max-output-bytes N] [--max-provider-calls N]\nOffline JSON fixture utility. Scenarios: success, unverified, check-failure,\nrepeated-invalid, negative, provider-failure. Default store: .fishnet/runs."
         }
     };
     writeln!(io::stdout(), "{text}")
 }
 
-fn legacy() -> Result<u8, Box<dyn std::error::Error>> {
-    match parse_arguments() {
-        Ok(Some(args)) => execute(args),
+fn run_fixture() -> Result<u8, Box<dyn std::error::Error>> {
+    match parse_fixture_arguments() {
+        Ok(Some(args)) => execute_fixture(args),
         Ok(None) => writeln!(io::stdout(), "{HELP}")
             .map(|()| 0)
             .map_err(Into::into),

@@ -7,7 +7,8 @@ make install
 fishnet
 ```
 
-For checkout development, `make run` opens the same interface. The command starts
+For checkout development, `make run` opens the same interface. `fishnet run` is
+also an interactive alias. Use `fishnet fixture` for the offline JSON utility. The command starts
 or attaches to the local Rust service. No second terminal is required. Startup
 makes no model request. The service owns accepted work after the interface exits.
 
@@ -106,7 +107,7 @@ startup are in `.fishnet/service/daemon.log`, with one bounded previous log.
 
 Responses compatibility is not universal provider compatibility. Native adapters
 can be added behind ModelProvider. ChatGPT mode does not silently switch to
-API-key billing. Standalone M1 `run` and M2 `code` remain diagnostic/compatibility
+API-key billing. Standalone M1 `fixture` and M2 `code` remain diagnostic/compatibility
 utilities; they do not gain daemon ownership. The completed bootstrap-summary
 contract is retained as evidence and must not be rerun unchanged.
 

@@ -1,3 +1,6 @@
+> Current CLI: the standalone fixture utility is named `fishnet fixture`.
+> The `fishnet run` examples below describe the historical M1 interface.
+
 # M1 acceptance evidence
 
 Status: complete locally on 2026-11-07. M2 has not started.

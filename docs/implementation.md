@@ -41,7 +41,7 @@ Acceptance: a client disconnect does not cancel accepted work; reconnect returns
 
 Status: active usability revision. The initial service-client acceptance and an approved disposable live coding task passed. The user rejected the dashboard interaction and rendering.
 
-The conversation revision provides a multiline prompt, slash commands, typed transcript entries, and temporary access/review panels. The OpenCode-inspired visual pass adds a centred start screen, limited content width, a model row, shaded tool blocks, and small-screen task controls. The local 93-test quality gate, Browser review of actual renderer cells, and an isolated real PTY fixture/reject/restart flow passed.
+The conversation revision provides a multiline prompt, slash commands, typed transcript entries, and temporary access/review panels. The OpenCode-inspired visual pass adds a centred start screen, limited content width, a model row, shaded tool blocks, and small-screen task controls. The local 95-test quality gate, Browser review of actual renderer cells, actual terminal-byte colour tests, and an isolated real PTY fixture/reject/restart flow passed. `fishnet run` now opens the interface; the standalone JSON utility is `fishnet fixture`. `--color auto|always|never` controls terminal colour policy and monochrome contrast.
 
 Persistent conversational turns, transient token display, rich Markdown, inline diffs, and native terminal appearance remain unfinished or unqualified. See [M4 evidence](m4-evidence.md) and [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md).
 
