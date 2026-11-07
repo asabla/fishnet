@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 pub const POLICY_VERSION: &str = "fixture-read-only-v1";
 pub const FIXTURE_REVISION: &str = "fixture-catalog-v1";
 
@@ -84,6 +84,8 @@ pub struct TaskContract {
     pub expected_value: Option<String>,
     pub policy_version: String,
     pub fixture_revision: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace: Option<crate::workspace::WorkspaceSpec>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -109,6 +111,9 @@ pub enum ErrorKind {
     CallLimit,
     DeadlineExceeded,
     Cancelled,
+    ExecutionFailure,
+    Conflict,
+    UnknownEffect,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -116,6 +121,14 @@ pub struct OperationError {
     pub kind: ErrorKind,
     pub message: String,
 }
+
+impl std::fmt::Display for OperationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{:?}: {}", self.kind, self.message)
+    }
+}
+
+impl std::error::Error for OperationError {}
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
@@ -132,6 +145,9 @@ pub enum ToolResult {
     Rejected {
         error: OperationError,
     },
+    Output {
+        data: Value,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -144,9 +160,13 @@ pub enum OperationRequest {
     Tool {
         call: ToolCall,
         relevant_state: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        effective_command: Option<crate::process::CommandSpec>,
     },
     Check {
         checker: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        effective_command: Option<crate::process::CommandSpec>,
     },
 }
 
@@ -155,6 +175,8 @@ pub enum OperationRequest {
 pub enum OperationResult {
     Model {
         reply: ModelReply,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider: Option<crate::provider::ProviderObservation>,
     },
     Tool {
         result: ToolResult,
@@ -162,6 +184,8 @@ pub enum OperationResult {
     Check {
         status: CheckStatus,
         evidence_operation_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        workspace: Option<crate::workspace::WorkspaceCheck>,
     },
     Error {
         error: OperationError,
@@ -215,6 +239,8 @@ pub enum EventData {
         contract: TaskContract,
         limits: Limits,
         provider_version: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        workspace_start: Option<crate::workspace::WorkspaceSnapshot>,
     },
     StateChanged {
         from: TaskState,

@@ -82,6 +82,7 @@ impl ScriptedProvider {
             expected_value: Some(EXPECTED_GREETING.into()),
             policy_version: POLICY_VERSION.into(),
             fixture_revision: FIXTURE_REVISION.into(),
+            workspace: None,
         };
         let mut steps = Vec::new();
         let final_reply = ModelReply::Final {
@@ -154,6 +155,22 @@ impl ScriptedProvider {
         deadline: Instant,
     ) -> Result<ModelReply, OperationError> {
         cancellation.wait(self.delay, deadline)?;
+        self.take_reply(previous)
+    }
+
+    pub(crate) async fn complete_async(
+        &mut self,
+        previous: Option<&ToolResult>,
+        cancellation: &Cancellation,
+        deadline: Instant,
+    ) -> Result<ModelReply, OperationError> {
+        cancellation
+            .interrupt(deadline, tokio::time::sleep(self.delay))
+            .await?;
+        self.take_reply(previous)
+    }
+
+    fn take_reply(&mut self, previous: Option<&ToolResult>) -> Result<ModelReply, OperationError> {
         let step = self.steps.pop_front().ok_or_else(|| OperationError {
             kind: ErrorKind::ProviderFailure,
             message: "fixture script exhausted".into(),

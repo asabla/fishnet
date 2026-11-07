@@ -74,6 +74,21 @@ impl Journal {
         })
     }
 
+    pub(crate) async fn append_async(&mut self, event: &Event) -> io::Result<()> {
+        let mut writer = Self {
+            file: self.file.try_clone()?,
+            run_id: self.run_id.clone(),
+            sequence: self.sequence,
+        };
+        let event = event.clone();
+        let sequence = event.sequence;
+        tokio::task::spawn_blocking(move || writer.append(&event))
+            .await
+            .map_err(io::Error::other)??;
+        self.sequence = sequence;
+        Ok(())
+    }
+
     pub(crate) fn append(&mut self, event: &Event) -> io::Result<()> {
         if event.sequence != self.sequence + 1 || event.sequence > MAX_EVENTS as u64 {
             return Err(invalid("journal event sequence or count exceeds limit"));
@@ -128,6 +143,11 @@ pub struct Statistics {
     pub rejected_calls: u32,
     pub expected_negative_results: u32,
     pub incidents: u32,
+    pub process_attempts: u32,
+    pub provider_us: u64,
+    pub tool_us: u64,
+    pub check_us: u64,
+    pub harness_us: Option<u64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -186,6 +206,7 @@ struct Replay {
     pending: BTreeMap<String, (OperationRequest, u32)>,
     completed: BTreeMap<String, OperationResult>,
     last_elapsed: u64,
+    contract: Option<crate::protocol::TaskContract>,
 }
 
 impl Replay {
@@ -205,6 +226,7 @@ impl Replay {
             pending: BTreeMap::new(),
             completed: BTreeMap::new(),
             last_elapsed: 0,
+            contract: None,
         }
     }
 
@@ -221,11 +243,17 @@ impl Replay {
                     return Err(invalid("duplicate run creation"));
                 }
                 limits.validate().map_err(invalid)?;
-                if contract.policy_version != POLICY_VERSION
-                    || contract.fixture_revision != FIXTURE_REVISION
-                {
-                    return Err(invalid("unsupported fixture contract version"));
+                let supported = if contract.workspace.is_some() {
+                    contract.policy_version == crate::workspace::POLICY
+                } else {
+                    contract.policy_version == POLICY_VERSION
+                        && contract.fixture_revision == FIXTURE_REVISION
+                };
+                if !supported {
+                    return Err(invalid("unsupported task contract version"));
                 }
+                self.contract = Some(contract.clone());
+                self.record.schema_version = event.schema_version;
             }
             EventData::StateChanged { from, to } => {
                 if *from != self.record.state || !from.permits(*to) || to.is_terminal() {
@@ -243,7 +271,9 @@ impl Replay {
                 }
                 self.record.statistics.incidents += 1;
             }
-            EventData::TaskFinished { outcome } => self.finish_task(outcome)?,
+            EventData::TaskFinished { outcome } => {
+                self.finish_task(outcome, event.duration_us.unwrap_or(event.elapsed_us))?;
+            }
         }
         self.last_elapsed = event.elapsed_us;
         self.record.events.push(event);
@@ -252,7 +282,9 @@ impl Replay {
 
     fn validate_envelope(&self, event: &Event) -> io::Result<()> {
         if self.record.events.len() >= MAX_EVENTS
-            || event.schema_version != SCHEMA_VERSION
+            || !(1..=SCHEMA_VERSION).contains(&event.schema_version)
+            || (!self.record.events.is_empty()
+                && event.schema_version != self.record.schema_version)
             || event.sequence != self.record.events.len() as u64 + 1
             || event.session_id != self.record.run_id
             || event.task_id != self.record.run_id
@@ -310,8 +342,17 @@ impl Replay {
                 }
                 self.record.statistics.provider_attempts += 1;
             }
-            OperationRequest::Tool { .. } => self.record.statistics.logical_tool_calls += 1,
-            OperationRequest::Check { .. } => (),
+            OperationRequest::Tool {
+                effective_command, ..
+            } => {
+                self.record.statistics.logical_tool_calls += 1;
+                self.record.statistics.process_attempts += u32::from(effective_command.is_some());
+            }
+            OperationRequest::Check {
+                effective_command, ..
+            } => {
+                self.record.statistics.process_attempts += u32::from(effective_command.is_some());
+            }
         }
         self.pending
             .insert(id.clone(), (request.clone(), event.turn));
@@ -346,22 +387,12 @@ impl Replay {
         if !matches_request {
             return Err(invalid("operation result type mismatch"));
         }
-        if let OperationResult::Check {
-            status: CheckStatus::Passed,
-            evidence_operation_id,
-        } = result
-            && !matches!(
-                evidence_operation_id
-                    .as_ref()
-                    .and_then(|source| self.completed.get(source)),
-                Some(OperationResult::Tool {
-                    result: ToolResult::Found { .. } | ToolResult::ExpectedNegative { .. }
-                })
-            )
-        {
-            return Err(invalid(
-                "passed check references no independent tool evidence",
-            ));
+        self.validate_check(result)?;
+        let duration = event.duration_us.unwrap_or_default();
+        match request {
+            OperationRequest::Provider { .. } => self.record.statistics.provider_us += duration,
+            OperationRequest::Tool { .. } => self.record.statistics.tool_us += duration,
+            OperationRequest::Check { .. } => self.record.statistics.check_us += duration,
         }
         if let OperationResult::Tool { result } = result {
             self.record.statistics.tool_results += 1;
@@ -370,14 +401,55 @@ impl Replay {
                 ToolResult::ExpectedNegative { .. } => {
                     self.record.statistics.expected_negative_results += 1;
                 }
-                ToolResult::Found { .. } => (),
+                ToolResult::Found { .. } | ToolResult::Output { .. } => (),
             }
         }
         self.completed.insert(id.clone(), result.clone());
         Ok(())
     }
 
-    fn finish_task(&mut self, outcome: &Outcome) -> io::Result<()> {
+    fn validate_check(&self, result: &OperationResult) -> io::Result<()> {
+        let OperationResult::Check {
+            status: CheckStatus::Passed,
+            evidence_operation_id,
+            workspace,
+        } = result
+        else {
+            return Ok(());
+        };
+        if let Some(check) = workspace {
+            let spec = self
+                .contract
+                .as_ref()
+                .and_then(|contract| contract.workspace.as_ref())
+                .ok_or_else(|| invalid("workspace check has no task contract"))?;
+            if !spec.commands.contains(&check.command)
+                || !spec.checks.contains(&check.command.id)
+                || check.output.exit_code != Some(0)
+                || !check.protected_unchanged
+                || spec
+                    .required_changes
+                    .iter()
+                    .any(|path| !check.changed_paths.contains(path))
+            {
+                return Err(invalid("workspace check contradicts its task contract"));
+            }
+        } else if !matches!(
+            evidence_operation_id
+                .as_ref()
+                .and_then(|source| self.completed.get(source)),
+            Some(OperationResult::Tool {
+                result: ToolResult::Found { .. } | ToolResult::ExpectedNegative { .. }
+            })
+        ) {
+            return Err(invalid(
+                "passed check references no independent tool evidence",
+            ));
+        }
+        Ok(())
+    }
+
+    fn finish_task(&mut self, outcome: &Outcome, total_us: u64) -> io::Result<()> {
         if !outcome.state.is_terminal()
             || !self.record.state.permits(outcome.state)
             || !self.pending.is_empty()
@@ -400,6 +472,24 @@ impl Replay {
                 "verified success requires a passed independent check",
             ));
         }
+        if outcome.state == TaskState::VerifiedSuccess
+            && let Some(spec) = self
+                .contract
+                .as_ref()
+                .and_then(|contract| contract.workspace.as_ref())
+        {
+            for id in &spec.checks {
+                if !self.completed.values().any(|result| matches!(result, OperationResult::Check {
+                    status: CheckStatus::Passed, workspace: Some(check), .. } if &check.command.id == id)) {
+                    return Err(invalid("verified outcome omits a required workspace check"));
+                }
+            }
+        }
+        let measured = self.record.statistics.provider_us
+            + self.record.statistics.tool_us
+            + self.record.statistics.check_us;
+        self.record.statistics.harness_us =
+            (self.record.schema_version >= 2).then(|| total_us.saturating_sub(measured));
         self.record.state = outcome.state;
         self.record.outcome = Some(outcome.clone());
         self.record.incomplete = false;

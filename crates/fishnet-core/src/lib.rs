@@ -1,10 +1,13 @@
-//! M1 local execution. The core owns policy, state, tools, and diagnostics.
+//! Local execution. The core owns policy, state, tools, and diagnostics.
 pub mod control;
 pub mod fixture;
+pub mod process;
 pub mod protocol;
+pub mod provider;
 pub mod runtime;
 pub mod storage;
 pub mod tool;
+pub mod workspace;
 
 pub use control::Cancellation;
 pub use fixture::{Scenario, ScriptedProvider};

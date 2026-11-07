@@ -91,7 +91,7 @@ fn parse_arguments() -> Result<Option<Arguments>, String> {
 
 fn execute(args: Arguments) -> Result<u8, Box<dyn std::error::Error>> {
     let stdout = io::stdout();
-    let mut output = stdout.lock();
+    let mut output = stdout;
     if let Some(run_id) = args.run_id {
         serde_json::to_writer(&mut output, &inspect(&args.store, &run_id)?)?;
         writeln!(output)?;
