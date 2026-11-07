@@ -339,11 +339,22 @@ impl Service {
         if state.closing {
             return Err(ApiError::new("capacity", "service is shutting down"));
         }
-        let entry = state.tasks.get_mut(id).ok_or_else(not_found)?;
+        let entry = state.tasks.get(id).ok_or_else(not_found)?;
         if entry.receipt.phase != Phase::AwaitingApproval || approval.expected_revision != 1 {
             return Err(ApiError::new(
                 "conflict",
                 "approval is no longer pending at this revision",
+            ));
+        }
+        if approval.approve
+            && state.tasks.values().any(|other| {
+                other.receipt.prepared.is_some()
+                    && matches!(other.receipt.phase, Phase::Accepted | Phase::Executing)
+            })
+        {
+            return Err(ApiError::new(
+                "capacity",
+                "another coding task is active for this workspace; finish or cancel it before approving another",
             ));
         }
         let mut receipt = entry.receipt.clone();

@@ -63,3 +63,8 @@ The daemon serves one operator on loopback. Use a protected tunnel for remote
 access. Browser origins, public HTTP listeners, multi-user roles, and automatic
 restart of task execution are not enabled. Ctrl-C stops admission, cancels active
 work, and waits for owned cleanup. The service retains unresolved approvals.
+
+One coding task can execute at a time within a service. Further approvals remain
+pending until that task finishes or is cancelled. Read-only fixtures can use the
+other execution slots. Use one service host per working tree. Separate service
+stores and standalone commands do not share this execution lock.

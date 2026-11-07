@@ -53,6 +53,10 @@ wait across service restart remains unknown.
 Mutating commands have owned asynchronous lifetimes. Abandoning an HTTP response
 cannot interrupt a durable acceptance-to-execution handoff. Admission is bounded:
 4 active tasks, 16 mutating commands, 16 HTTP requests, and 8 event long polls.
+Only one active task can be a coding task. Coding grants can share paths, so
+concurrent execution could overwrite another task's edits. Additional approvals
+remain pending. This rule is local to one service; use one service host per
+working tree and do not run a standalone writer against that tree concurrently.
 There is no per-consumer event queue. Each consumer pages the existing journal.
 At most 8 events are returned per page. The live window retains 128 events;
 a gap returns an explicit flag, current snapshot, and recovery cursor. Full

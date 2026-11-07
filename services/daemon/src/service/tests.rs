@@ -112,3 +112,68 @@ async fn seed(config: &Config) -> std::result::Result<(), Box<dyn Error>> {
     drop(store);
     Ok(())
 }
+
+#[tokio::test]
+async fn coding_admission_preserves_pending_approval_while_the_workspace_is_owned()
+-> std::result::Result<(), Box<dyn Error>> {
+    let root = std::env::temp_dir()
+        .canonicalize()?
+        .join(format!("fishnet-write-owner-{}", crate::new_id()?));
+    fs::create_dir_all(root.join("tasks"))?;
+    fs::write(
+        root.join("tasks/read.json"),
+        serde_json::to_vec(&json!({"schema_version":1,"objective":"Read only",
+        "workspace":{"root":".","allowed_writes":[],"required_changes":[],"protected_paths":[],"commands":[],"checks":[]}}))?,
+    )?;
+    let config = Config {
+        root: root.clone(),
+        directory: root.join("service"),
+        runs: root.join("runs"),
+        allow_code: true,
+        ..Config::default()
+    };
+    let service = Service::open(config).await?;
+    let request = |id: &str| Submission {
+        request_id: id.into(),
+        task: TaskRequest::Code {
+            task_path: "tasks/read.json".into(),
+            model: None,
+            account: "default".into(),
+        },
+    };
+    let first = service.submit(request("first")).await?;
+    let second = service.submit(request("second")).await?;
+    // Hold a valid post-approval/pre-journal owner without contacting a provider.
+    let reservation = service.slot()?;
+    {
+        let mut state = service.inner.state.lock().await;
+        let entry = state.tasks.get_mut(&first.task_id).ok_or("missing owner")?;
+        entry.receipt.phase = Phase::Executing;
+        entry.receipt.decision = Some(true);
+        let receipt = entry.receipt.clone();
+        drop(state);
+        service.persist(receipt).await?;
+    }
+    let error = service
+        .approve(
+            &second.task_id,
+            Approval {
+                expected_revision: 1,
+                approve: true,
+            },
+        )
+        .await
+        .err()
+        .ok_or("parallel coding was accepted")?;
+    assert_eq!(error.code, "capacity");
+    let still_pending = service.snapshot(&second.task_id).await?;
+    assert_eq!(still_pending.phase, Phase::AwaitingApproval);
+    assert_eq!(still_pending.approval_decision, None);
+    assert!(still_pending.approval.is_some());
+    assert!(!root.join("runs").exists());
+    drop(reservation);
+    service.shutdown().await;
+    drop(service);
+    fs::remove_dir_all(root)?;
+    Ok(())
+}
