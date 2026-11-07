@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "objective": "Add --summary to fishnet inspect. Edit only apps/cli/src/inspection.rs. Summary output must be one JSON object with run_id, state, outcome, incomplete, partial_tail, pending_operation_ids, and statistics. Omit events. Keep full inspection unchanged when --summary is absent. Preserve exit codes and journal contents. Run the named build and acceptance commands, then formatting, tests, Clippy, and documentation checks. Follow AGENTS.md and docs/development.md. Do not change checks, task grants, credentials, or policy. Do not commit. The host will run all independent checks again after your final response.",
+  "workspace": {
+    "root": ".",
+    "allowed_writes": [
+      "apps/cli/src/inspection.rs"
+    ],
+    "required_changes": [
+      "apps/cli/src/inspection.rs"
+    ],
+    "protected_paths": [
+      "tests/bootstrap/inspect_summary.rs",
+      "tasks/bootstrap-summary.json",
+      "AGENTS.md",
+      "Cargo.toml",
+      "Cargo.lock",
+      "apps/cli/Cargo.toml",
+      "scripts/check.sh",
+      "docs/development.md"
+    ],
+    "commands": [
+      {
+        "id": "build",
+        "program": "cargo",
+        "arguments": [
+          "build",
+          "--offline",
+          "--locked",
+          "-p",
+          "fishnet-cli"
+        ],
+        "timeout_ms": 300000
+      },
+      {
+        "id": "acceptance",
+        "program": ".fishnet/bootstrap/inspect-summary-check",
+        "arguments": [],
+        "timeout_ms": 300000
+      },
+      {
+        "id": "format",
+        "program": "cargo",
+        "arguments": [
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "timeout_ms": 300000
+      },
+      {
+        "id": "tests",
+        "program": "cargo",
+        "arguments": [
+          "test",
+          "--workspace",
+          "--offline",
+          "--locked"
+        ],
+        "timeout_ms": 300000
+      },
+      {
+        "id": "clippy",
+        "program": "cargo",
+        "arguments": [
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--offline",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "timeout_ms": 300000
+      },
+      {
+        "id": "docs",
+        "program": "cargo",
+        "arguments": [
+          "doc",
+          "--workspace",
+          "--no-deps",
+          "--offline",
+          "--locked"
+        ],
+        "timeout_ms": 300000
+      }
+    ],
+    "checks": [
+      "build",
+      "acceptance",
+      "format",
+      "tests",
+      "clippy",
+      "docs"
+    ]
+  },
+  "limits": {
+    "deadline_ms": 300000,
+    "max_provider_calls": 32,
+    "max_output_bytes": 8192
+  }
+}

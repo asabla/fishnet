@@ -1,15 +1,22 @@
+mod account;
+mod coding;
+mod inspection;
+
 use std::env;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 
-use fishnet_core::{
-    Cancellation, Limits, RunOptions, Scenario, ScriptedProvider, TaskState, inspect, run,
-};
+use fishnet_core::{Cancellation, Limits, RunOptions, Scenario, ScriptedProvider, TaskState, run};
 
-const HELP: &str = "fishnet M1: deterministic local harness
+const HELP: &str = "fishnet: independent local agent harness
 Usage:
+  fishnet auth login|status|logout [--account LABEL] [--auth-dir DIR]
+  fishnet models [--account LABEL] [--auth-dir DIR]
+  fishnet code --task PATH [--root DIR] [--provider chatgpt|openai|responses]
+               [--model NAME] [--account LABEL] [--auth-dir DIR] [--store DIR]
+               [--endpoint URL] [--key-env NAME]
   fishnet run [--scenario NAME] [--store DIR] [--deadline-ms N]
               [--step-delay-ms N] [--max-output-bytes N] [--max-provider-calls N]
   fishnet inspect RUN_ID [--store DIR]
@@ -21,8 +28,6 @@ Exit codes: 0 verified/inspection, 2 failed/error, 3 unverified, 130 cancelled."
 
 #[derive(Debug)]
 struct Arguments {
-    command: String,
-    run_id: Option<String>,
     store: PathBuf,
     scenario: Scenario,
     limits: Limits,
@@ -37,16 +42,10 @@ fn parse_arguments() -> Result<Option<Arguments>, String> {
     if command == "--help" || command == "-h" {
         return Ok(None);
     }
-    if command != "run" && command != "inspect" {
-        return Err("expected run or inspect".into());
+    if command != "run" {
+        return Err("expected run".into());
     }
     let mut parsed = Arguments {
-        run_id: if command == "inspect" {
-            Some(args.next().ok_or("inspect requires a run ID")?)
-        } else {
-            None
-        },
-        command,
         store: ".fishnet/runs".into(),
         scenario: Scenario::Success,
         limits: Limits::default(),
@@ -59,9 +58,6 @@ fn parse_arguments() -> Result<Option<Arguments>, String> {
         if flag == "--store" {
             parsed.store = value.into();
             continue;
-        }
-        if parsed.command == "inspect" {
-            return Err(format!("unsupported inspection option: {flag}"));
         }
         match flag.as_str() {
             "--scenario" => {
@@ -92,12 +88,6 @@ fn parse_arguments() -> Result<Option<Arguments>, String> {
 fn execute(args: Arguments) -> Result<u8, Box<dyn std::error::Error>> {
     let stdout = io::stdout();
     let mut output = stdout;
-    if let Some(run_id) = args.run_id {
-        serde_json::to_writer(&mut output, &inspect(&args.store, &run_id)?)?;
-        writeln!(output)?;
-        return Ok(0);
-    }
-
     let cancellation = Cancellation::default();
     let signal_cancellation = cancellation.clone();
     ctrlc::set_handler(move || signal_cancellation.cancel())?;
@@ -132,18 +122,39 @@ fn execute(args: Arguments) -> Result<u8, Box<dyn std::error::Error>> {
 }
 
 fn main() -> ExitCode {
-    let result = match parse_arguments() {
+    let result = match env::args().nth(1).as_deref() {
+        Some("auth") => account::execute(env::args().skip(2), false),
+        Some("models") => account::execute(env::args().skip(2), true),
+        Some("code") => coding::execute(env::args().skip(2)),
+        Some("inspect") => inspection::execute(env::args().skip(2)),
+        _ => legacy(),
+    };
+    report(result)
+}
+
+fn legacy() -> Result<u8, Box<dyn std::error::Error>> {
+    match parse_arguments() {
         Ok(Some(args)) => execute(args),
         Ok(None) => writeln!(io::stdout(), "{HELP}")
             .map(|()| 0)
             .map_err(Into::into),
         Err(message) => Err(message.into()),
-    };
+    }
+}
+
+fn report(result: Result<u8, Box<dyn std::error::Error>>) -> ExitCode {
     match result {
         Ok(code) => ExitCode::from(code),
         Err(error) => {
             let _ = writeln!(io::stderr(), "fishnet: {error}");
-            ExitCode::from(2)
+            if error
+                .downcast_ref::<fishnet_core::protocol::OperationError>()
+                .is_some_and(|error| error.kind == fishnet_core::protocol::ErrorKind::Cancelled)
+            {
+                ExitCode::from(130)
+            } else {
+                ExitCode::from(2)
+            }
         }
     }
 }

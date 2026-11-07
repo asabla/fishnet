@@ -335,6 +335,7 @@ dependencies = [
  "ctrlc",
  "fishnet-core",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

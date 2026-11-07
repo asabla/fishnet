@@ -27,8 +27,11 @@ Release builds retain integer overflow checks.
 
 The complexity threshold is 15. The argument threshold is 6. The function
 length threshold is 80 lines as counted by Clippy. These are local review
-thresholds. They are not proof of readability. There are no lint suppressions
-in M1. Do not enable every restriction lint: several impose conflicting policies.
+thresholds. They are not proof of readability. M1 has no lint suppressions. M2 has three narrow `#[expect]` attributes for CLI
+entry points. `unreachable_pub` requires crate visibility, while the pinned
+Clippy `redundant_pub_crate` lint rejects it inside private binary modules. The
+attributes record this conflict and become errors when the expectation is no
+longer needed. Do not enable every restriction lint: several impose conflicting policies.
 
 ## Code intent
 
