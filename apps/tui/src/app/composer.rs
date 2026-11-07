@@ -1,9 +1,11 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::{Action, App, ExitIntent, Modal, input};
+use super::{Action, App, ExitIntent, Modal, Mode, input};
 
-pub const COMMANDS: [(&str, &str); 10] = [
-    ("/new", "Start a new task"),
+pub const COMMANDS: [(&str, &str); 12] = [
+    ("/new", "Start a new conversation"),
+    ("/chat", "Chat without file or command access"),
+    ("/code", "Prepare a code change with explicit access"),
     ("/tasks", "Open saved tasks"),
     ("/review", "Review pending file and command access"),
     ("/cancel", "Cancel the selected task"),
@@ -73,6 +75,33 @@ impl App {
             );
             return None;
         }
+        if self.mode == Mode::Chat {
+            if let Some(view) = &self.snapshot
+                && (self.conversation.is_none() || !view.phase.terminal())
+            {
+                self.set_notice("This task cannot receive a message. Wait for its response or use /new. Your prompt is retained.".into());
+                return None;
+            }
+            return match fishnet_service::new_id() {
+                Ok(request_id) => {
+                    self.submitted_prompt = Some((request_id.clone(), text.clone()));
+                    Some(Action::Submit(fishnet_service::contract::Submission {
+                        request_id,
+                        task: fishnet_service::contract::TaskRequest::Chat {
+                            message: text,
+                            parent_task_id: self.selected.clone(),
+                            model: (!self.default_model.is_empty())
+                                .then(|| self.default_model.clone()),
+                            account: self.account.clone(),
+                        },
+                    }))
+                }
+                Err(error) => {
+                    self.set_notice(error.to_string());
+                    None
+                }
+            };
+        }
         // The service still freezes an exact file grant before it calls a provider.
         // Typing intent is not permission to write arbitrary workspace files.
         self.modal = Some(Modal::Scope {
@@ -90,7 +119,9 @@ impl App {
         }
         self.composer = Composer::default();
         match command {
-            "/new" => {
+            "/new" | "/chat" => {
+                self.mode = Mode::Chat;
+                self.conversation = None;
                 self.selected = None;
                 self.snapshot = None;
                 self.lines.clear();
@@ -98,6 +129,7 @@ impl App {
                 self.scroll = 0;
                 self.show_tasks = false;
             }
+            "/code" => self.mode = Mode::Code,
             "/tasks" => self.show_tasks = true,
             "/review" => self.open_review(),
             "/cancel" => {

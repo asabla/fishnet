@@ -25,13 +25,20 @@ permission. Tokens stay in `.fishnet/auth`. Do not paste or commit them. Status
 reads local data; model listing makes an account request. Account output is
 readable by default; use `--json` for scripts.
 
-## Prepare and review a task
+## Send messages
 
-Type the required result in the prompt. Enter opens file access selection.
+Type a message and press Enter. Review provider consent once for the conversation.
+Later messages include earlier replies. Chat has no file or command access and
+responses remain unverified. `/new` starts a separate conversation; `fishnet attach`
+can resume a completed saved turn. This is session history, not project memory.
+
+## Prepare and review a code task
+
+Use `/code`, then type the required result. Enter opens file access selection.
 Name exact files to change, separated by commas. Enter then prepares a Rust task
 with fixed Cargo formatting, tests, Clippy, and documentation checks. It does not start a provider. Review the complete
 file grant, resolved commands, provider, account, model, checks, and limits.
-Press y to approve or n to reject.
+Press Enter or y to approve, n to reject, or F2 for full details.
 
 This profile requires Cargo.toml. It permits at most 32 exact file paths and
 requires each named file to change. Blank files prohibit source edits. Commands
@@ -46,8 +53,8 @@ they do not prove every claim about the requested behavior. Review the source
 diff before committing. Cancellation can leave completed edits or partial
 command effects. Fishnet does not roll back or blindly retry uncertain work.
 
-Use /fixture for an offline example and /help for help. Each submission is a
-separate task; earlier messages are not sent as context for a new task. See [TUI usage](../apps/tui/README.md).
+Use /fixture for an offline example and /help for help. Code submissions remain
+separate tasks; they do not inherit chat context or consent. See [TUI usage](../apps/tui/README.md).
 
 ## Inspect, detach, and stop
 

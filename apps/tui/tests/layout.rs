@@ -74,6 +74,7 @@ fn running() -> App {
         state: Some(TaskState::Running),
         objective: "Improve terminal rendering".into(),
     }];
+    app.mode = fishnet_tui::app::Mode::Code;
     app.selected = Some(id.clone());
     app.snapshot = Some(TaskView {
         task_id: id,
@@ -114,6 +115,7 @@ fn reviewed_layouts_cover_normal_and_small_terminals() -> TestResult {
     let mut app = running();
     snapshot("running-120x30", &draw(&mut app, 120, 30)?)?;
     snapshot("running-80x24", &draw(&mut app, 80, 24)?)?;
+    app.mode = fishnet_tui::app::Mode::Code;
     app.paste("Wrap long output and keep approval controls visible when the terminal is resized.");
     key(&mut app, KeyCode::Enter);
     app.paste("apps/tui/src/render.rs");
@@ -131,7 +133,7 @@ fn reviewed_layouts_cover_normal_and_small_terminals() -> TestResult {
             .split_whitespace()
             .collect::<Vec<_>>()
             .join(" ")
-            .contains("roll them back.")
+            .contains("roll back completed edits.")
     );
     assert!(help.text.contains("Esc Close"));
     assert!(!help.text.contains("Independent check"));
@@ -169,6 +171,7 @@ fn wrapped_output_is_readable_at_the_end_and_can_scroll_to_the_start() -> TestRe
 #[test]
 fn new_task_edits_unicode_in_place_and_submits_intent_without_executing_it() -> TestResult {
     let mut app = App::default();
+    app.mode = fishnet_tui::app::Mode::Code;
     app.paste("Fix 界x");
     key(&mut app, KeyCode::Left);
     key(&mut app, KeyCode::Backspace);
@@ -228,10 +231,11 @@ fn approval_controls_and_outcome_labels_remain_readable_after_resize() -> TestRe
     key(&mut app, KeyCode::Enter);
     for (width, height) in [(40, 12), (60, 15), (80, 24), (120, 36)] {
         let rendered = draw(&mut app, width, height)?;
-        assert!(rendered.text.contains("y Approve  n Reject  Esc Close"));
+        assert!(rendered.text.contains("Enter Allow"));
         assert!(!rendered.text.contains("RUNNING"));
     }
     snapshot("approval-80x24", &draw(&mut app, 80, 24)?)?;
+    key(&mut app, KeyCode::F(2));
     key(&mut app, KeyCode::End);
     let end = draw(&mut app, 80, 24)?;
     snapshot("approval-end-80x24", &end)?;
@@ -301,7 +305,7 @@ fn start_screen_and_model_preference_adapt_without_claiming_a_provider() -> Test
     });
     for (width, height) in [(40, 15), (80, 24), (120, 40)] {
         let rendered = draw(&mut app, width, height)?;
-        assert!(rendered.text.contains("Rust · requested-model"));
+        assert!(rendered.text.contains("Chat · requested-model"));
         assert!(rendered.text.contains("/ commands"));
         assert!(!rendered.text.contains("Connected"));
         assert!(!rendered.text.contains("ChatGPT"));
@@ -332,5 +336,56 @@ fn saved_task_picker_keeps_its_controls_visible_in_a_narrow_terminal() -> TestRe
     snapshot("tasks-40x15", &rendered)?;
     key(&mut app, KeyCode::Esc);
     assert!(!app.show_tasks);
+    Ok(())
+}
+
+#[test]
+fn chat_consent_is_compact_and_keeps_the_message_visible() -> TestResult {
+    let mut app = App::default();
+    app.connected = true;
+    let grant = fishnet_service::contract::ApprovalView {
+        conversation: true,
+        revision: 1,
+        objective: "Hello fishnet".into(),
+        provider: "ChatGPT account".into(),
+        model: None,
+        account: "default".into(),
+        root: std::path::PathBuf::new(),
+        allowed_writes: vec![],
+        required_changes: vec![],
+        protected_paths: vec![],
+        commands: vec![],
+        checks: vec![],
+        limits: fishnet_core::conversation::limits(),
+        fingerprint: "fixture".into(),
+    };
+    app.update(fishnet_tui::app::Message::Submitted(TaskView {
+        task_id: "chat".into(),
+        request_id: "message".into(),
+        phase: Phase::AwaitingApproval,
+        message: None,
+        approval: Some(grant),
+        approval_decision: None,
+        approval_wait_ms: None,
+        cursor: 0,
+        run: None,
+    }));
+    let normal = draw(&mut app, 80, 24)?;
+    assert!(normal.text.contains("Hello fishnet"));
+    assert!(normal.text.contains("Allow provider access?"));
+    assert!(normal.text.contains("Only conversation messages are sent."));
+    assert!(!normal.text.contains("File access"));
+    assert!(!normal.text.contains("Approved commands"));
+    assert!(!normal.text.contains("Waiting for task events"));
+    snapshot("chat-consent-80x24", &normal)?;
+    let narrow = draw(&mut app, 40, 15)?;
+    assert!(narrow.text.contains("Enter Allow"));
+    assert!(narrow.text.contains("F2 More"));
+    snapshot("chat-consent-40x15", &narrow)?;
+    key(&mut app, KeyCode::F(2));
+    assert!(draw(&mut app, 80, 24)?.text.contains("Grant fingerprint"));
+    assert!(
+        matches!(key(&mut app,KeyCode::Enter),Some(Action::Approve {decision,..}) if decision.approve && decision.expected_revision==1)
+    );
     Ok(())
 }

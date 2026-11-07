@@ -57,7 +57,7 @@ fn parse(mut args: impl Iterator<Item = String>) -> TerminalResult<Option<(PathB
     while let Some(option) = args.next() {
         if option == "--help" || option == "-h" {
             println!(
-                "fishnet: terminal interface\nUsage: fishnet [--connection PATH] [--attach TASK_ID] [--task tasks/FILE.json]\n               [--model NAME] [--account LABEL] [--no-start] [--color auto|always|never]\nThe local service starts automatically. Explicit --connection only attaches.\nAuto colour respects NO_COLOR; --color always enables the colour theme.\nType a Rust task. Enter selects file access, then opens approval review.\nCommands: /fixture, /tasks, /review, /cancel, /details, /help, /quit.\nCtrl-C detaches. Accepted work continues. Use fishnet stop to shut down the service."
+                "fishnet: terminal interface\nUsage: fishnet [--connection PATH] [--attach TASK_ID] [--task tasks/FILE.json]\n               [--model NAME] [--account LABEL] [--no-start] [--color auto|always|never]\nThe local service starts automatically. Explicit --connection only attaches.\nAuto colour respects NO_COLOR; --color always enables the colour theme.\nType a message. Enter sends it after provider consent. Use /code for explicit file access.\nCommands: /new, /code, /fixture, /tasks, /review, /cancel, /details, /help, /quit.\nCtrl-C detaches. Accepted work continues. Use fishnet stop to shut down the service."
             );
             return Ok(None);
         }

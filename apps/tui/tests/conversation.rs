@@ -36,6 +36,8 @@ fn ordinary_keys_are_text_and_only_enter_runs_a_slash_command() {
 #[test]
 fn prompt_preserves_multiline_intent_through_scope_and_cancel() -> TestResult {
     let mut app = App::default();
+    app.paste("/code");
+    press(&mut app, KeyCode::Enter);
     app.paste("Fix the result.\nKeep the existing test.");
     assert!(press(&mut app, KeyCode::Enter).is_none());
     assert!(matches!(app.modal, Some(Modal::Scope { .. })));
@@ -251,4 +253,78 @@ fn replayed_observations_and_submission_acknowledgement_preserve_new_input() -> 
     app.update(Message::Submitted(acknowledgement.snapshot));
     assert_eq!(app.composer.text, "A new unsent task");
     Ok(())
+}
+
+#[test]
+fn plain_message_submits_chat_without_file_selection_and_can_continue_a_saved_turn() -> TestResult {
+    let mut app = App::default();
+    app.paste("hello");
+    let Some(Action::Submit(request)) = press(&mut app, KeyCode::Enter) else {
+        return Err("no chat submission".into());
+    };
+    assert!(matches!(
+        request.task,
+        fishnet_service::contract::TaskRequest::Chat {
+            parent_task_id: None,
+            ..
+        }
+    ));
+    assert!(app.modal.is_none());
+    app.composer = fishnet_tui::app::Composer::default();
+    app.select("task".into());
+    let context = fishnet_core::conversation::Context {
+        schema_version: 1,
+        root_task_id: "root".into(),
+        messages: vec![
+            fishnet_core::conversation::Message {
+                role: fishnet_core::conversation::Role::User,
+                text: "Remember Ada".into(),
+            },
+            fishnet_core::conversation::Message {
+                role: fishnet_core::conversation::Role::Assistant,
+                text: "Understood".into(),
+            },
+            fishnet_core::conversation::Message {
+                role: fishnet_core::conversation::Role::User,
+                text: "Which name?".into(),
+            },
+        ],
+    };
+    let mut message = page(vec![event(
+        1,
+        None,
+        EventData::RunCreated {
+            contract: context.into_contract(),
+            limits: fishnet_core::conversation::limits(),
+            provider_version: "fixture".into(),
+            workspace_start: None,
+        },
+    )]);
+    if let Message::Page(page) = &mut message {
+        page.snapshot.phase = Phase::Finished;
+    }
+    app.update(message);
+    assert_eq!(app.conversation.as_deref(), Some("root"));
+    assert_eq!(app.transcript.len(), 3);
+    assert_eq!(
+        app.transcript.get(1).map(|entry| entry.text.as_str()),
+        Some("Understood")
+    );
+    app.paste("Continue");
+    assert!(
+        matches!(press(&mut app,KeyCode::Enter),Some(Action::Submit(request)) if matches!(&request.task,fishnet_service::contract::TaskRequest::Chat {parent_task_id:Some(id),..} if id=="task"))
+    );
+    Ok(())
+}
+
+#[test]
+fn active_turn_keeps_new_input_until_the_response_arrives() {
+    let mut app = App::default();
+    app.select("task".into());
+    app.update(page(Vec::new()));
+    app.conversation = Some("root".into());
+    app.paste("Do not lose this message");
+    assert!(press(&mut app, KeyCode::Enter).is_none());
+    assert_eq!(app.composer.text, "Do not lose this message");
+    assert!(app.modal.is_none());
 }

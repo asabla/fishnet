@@ -1,24 +1,24 @@
   Improve terminal rendering
 
-  Review host grant───────────────────────────────────────────────────────────
-    Provider: ChatGPT account
-    Account: default
-    Model: fixture-model
-    Root: "/workspace/fishnet"
+  │ Improve terminal rendering
 
-    Objective:
-    Keep the complete grant readable on resize
+  │ Read  apps/tui/src/render.rs
+  Allow provider access?──────────────────────────────────────────────────────
+    ChatGPT account · default · fixture-model
+    Workspace: /workspace/fishnet
 
-    Writable files:
-    ["apps/tui/src/render.rs"]
-    Required changes:
-    ["apps/tui/src/render.rs"]
-    Protected files:
-    ["tests/behavior.rs"]
+    Files to change: apps/tui/src/render.rs
+    Checks: test
 
-    Independent checks: ["test"]
-    Deadline: 5000 ms; model turns: 16; output: 4096 bytes
+    Source files and approved command output may be sent to this provider.
+    Commands use the host OS permissions. Review full details with F2.
 
-    Approved commands:
-    y Approve  n Reject  Esc Close
-    Rows 1–19 of 30
+
+
+    Enter Allow  n No  F2 More  Esc
+
+  │ ▏Describe a code change…
+  │ Code · host default
+  │
+  workspace                                / commands   ctrl+p tasks   F1 help
+   AWAITING APPROVAL · /review

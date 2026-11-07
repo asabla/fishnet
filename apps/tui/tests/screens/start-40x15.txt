@@ -5,8 +5,8 @@
 
 
   │
-  │ ▏Describe a Rust task…
-  │ Rust · requested-model
+  │ ▏Message fishnet…
+  │ Chat · requested-model
   │
   fishnet    / commands · ctrl+p tasks
 

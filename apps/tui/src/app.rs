@@ -58,6 +58,8 @@ pub enum Modal {
         id: String,
         revision: u64,
         text: String,
+        summary: String,
+        expanded: bool,
         scroll: u16,
     },
     Cancel(String),
@@ -83,8 +85,17 @@ pub enum ExitIntent {
     WaitingForCommands,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum Mode {
+    #[default]
+    Chat,
+    Code,
+}
+
 #[derive(Clone, Debug)]
 pub struct App {
+    pub mode: Mode,
+    pub conversation: Option<String>,
     pub appearance: crate::appearance::Appearance,
     pub tasks: Vec<TaskSummary>,
     pub selected: Option<String>,
@@ -107,10 +118,13 @@ pub struct App {
     pub account: String,
     pub project: String,
     last_sequence: Option<u64>,
+    submitted_prompt: Option<(String, String)>,
 }
 impl Default for App {
     fn default() -> Self {
         Self {
+            mode: Mode::Chat,
+            conversation: None,
             appearance: crate::appearance::Appearance::Color,
             tasks: Vec::new(),
             selected: None,
@@ -133,6 +147,7 @@ impl Default for App {
             account: "default".into(),
             project: "workspace".into(),
             last_sequence: None,
+            submitted_prompt: None,
         }
     }
 }
@@ -209,13 +224,18 @@ impl App {
     }
 
     fn submitted(&mut self, view: TaskView) -> Action {
-        if view
-            .approval
+        if self
+            .submitted_prompt
             .as_ref()
-            .is_some_and(|grant| grant.objective == self.composer.text.trim())
+            .is_some_and(|(id, text)| id == &view.request_id && text == self.composer.text.trim())
+            || view
+                .approval
+                .as_ref()
+                .is_some_and(|grant| grant.objective == self.composer.text.trim())
         {
             self.composer = Composer::default();
         }
+        self.submitted_prompt = None;
         self.acknowledge(&format!("request {}", view.request_id));
         self.set_notice(
             if view.approval.is_some() {
@@ -228,6 +248,13 @@ impl App {
         self.notice_level = NoticeLevel::Info;
         self.show_tasks = false;
         let action = self.select(view.task_id.clone());
+        if let Some(grant) = &view.approval {
+            self.transcript.push_back(Entry {
+                kind: EntryKind::User,
+                text: safe(&grant.objective, 4096),
+                operation_id: None,
+            });
+        }
         self.snapshot = Some(view);
         if self
             .snapshot
@@ -344,6 +371,7 @@ impl App {
         self.lines.clear();
         self.transcript.clear();
         self.last_sequence = None;
+        self.conversation = None;
         self.scroll = 0;
         Action::Select(id)
     }
@@ -399,6 +427,8 @@ impl App {
                 id: view.task_id.clone(),
                 revision: grant.revision,
                 text,
+                summary: fishnet_service::display::approval_summary(grant),
+                expanded: false,
                 scroll: 0,
             });
         } else {
@@ -439,9 +469,15 @@ impl App {
                 id,
                 revision,
                 scroll,
+                expanded,
                 ..
             } => match key {
-                KeyCode::Char('y') => Some(Action::Approve {
+                KeyCode::F(2) => {
+                    *expanded = !*expanded;
+                    *scroll = 0;
+                    None
+                }
+                KeyCode::Enter | KeyCode::Char('y') => Some(Action::Approve {
                     id: id.clone(),
                     decision: Approval {
                         expected_revision: *revision,
@@ -582,7 +618,19 @@ impl App {
     }
 
     fn append(&mut self, event: &Event) {
-        transcript::append(&mut self.transcript, event);
+        if let fishnet_core::protocol::EventData::RunCreated { contract, .. } = &event.data {
+            self.conversation = contract
+                .conversation
+                .as_ref()
+                .map(|context| context.root_task_id.clone());
+            self.mode = if self.conversation.is_some() {
+                Mode::Chat
+            } else {
+                Mode::Code
+            };
+            self.transcript.clear();
+        }
+        transcript::append(&mut self.transcript, event, self.conversation.is_some());
         let description = describe(&event.data);
         let mut lines = description.lines();
         for line in lines.by_ref().take(24) {

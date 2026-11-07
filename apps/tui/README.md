@@ -16,27 +16,45 @@ The colour previews show the colour theme. Monochrome mode is labelled in the
 footer. Actual terminal escape bytes are checked separately from renderer cells.
 `fishnet run` opens this interface. `fishnet fixture` prints offline JSON events.
 
-## Write a task
+## Send a message
 
-Type a Rust task in the prompt. Ordinary letters enter text. Press Enter
-to select exact files the task can change, separated by commas. Leave that field
-blank to prohibit source edits. Enter then prepares the complete host grant.
-Esc returns to the retained prompt. No provider call starts during preparation.
+Type a message and press Enter. The first message opens a compact provider
+consent dialog. Enter or `y` allows it; `n` rejects it. F2 shows full details.
+Later messages in that conversation share the same consent. Chat has no file or
+command access. It sends messages only, including earlier replies in that
+conversation. Startup and preparation make no provider request.
 
-Review the provider, model, workspace, file access, commands, checks, and limits.
-Use arrows or PageUp/PageDown to read the grant. Press `y` to approve or `n` to
-reject. The service records and checks the displayed approval revision.
+Each turn has a durable task record linked to its parent. Attach to a saved turn
+with `fishnet attach TASK_ID`, then send another message. Restart inspection
+reads journals; it does not repeat model or tool calls. History is session data,
+not user or project memory. Responses remain unverified.
 
-The guided profile requires Cargo.toml and selects Cargo formatting, tests,
-Clippy, and documentation checks. Each named file must change. Quality checks
-establish their listed criteria; they do not prove every requirement in an
-objective. Review the diff and protect behavioral checks when needed. Use
-`/taskfile` for a reviewed contract under `tasks/`. See [task authoring](../../tasks/README.md).
+The context limit is 16 turns and 32 KiB of message text. Messages are limited
+to 4096 bytes; replies to 8192 bytes. A full context or a truncated reply requires
+`/new`. No earlier context is silently discarded. A failed or cancelled turn
+cannot pass on consent. Changing provider, account, or requested model requires
+a new conversation. Only completed turns can receive a later message.
 
-Each submission is a separate task. The current service does not send earlier
-conversation text as context for a new submission. This revision corrects the
-prompt and transcript interaction; persistent conversational turns and transient
-token display remain unfinished M4 work.
+## Prepare a code task
+
+Use `/code` before entering a code task. Enter then selects exact writable files,
+separated by commas. Leave the field blank to prohibit source edits. Each named
+file must change. Esc returns to the retained prompt. The guided profile requires
+Cargo.toml and selects Cargo formatting, tests, Clippy, and documentation checks.
+Code tasks remain separate and do not inherit chat context or consent.
+
+The compact grant names the provider, model, workspace, file access, and checks.
+Use F2 to inspect command arguments, protected files, limits, and fingerprint.
+The service enforces the displayed grant revision. Quality checks do not prove
+every requirement in an objective. Review the diff and protect behavioral checks
+when needed. `/taskfile` opens a reviewed contract under `tasks/`. See
+[task authoring](../../tasks/README.md).
+
+To test conversation without an account, start an isolated host with
+`fishnet serve --provider fixture --allow-code`. Then connect with
+`fishnet --connection PATH`. This provider returns labelled, deterministic text.
+It never calls a live provider and cannot run code tasks. The separate `/fixture`
+command exercises the existing model/tool/result/model fixture.
 
 ## Commands and keys
 
@@ -45,7 +63,8 @@ Enter executes a command. Paste alone never executes one.
 
 | Command | Action |
 | --- | --- |
-| /new | Clear the selected view and start a new task |
+| /new, /chat | Start a separate conversation |
+| /code | Switch to explicit code task preparation |
 | /tasks | Open saved tasks; arrows select, Enter opens, Esc closes |
 | /review | Review pending file and command access |
 | /cancel | Open cancellation confirmation; `y` confirms |
@@ -58,7 +77,7 @@ Enter executes a command. Paste alone never executes one.
 
 | Key | Action |
 | --- | --- |
-| Enter | Prepare the prompt or execute a slash command |
+| Enter | Send a message, prepare a code task, or execute a command |
 | Alt-Enter, Shift-Enter, or Ctrl-J | Insert a new line; terminal support varies, so Ctrl-J is the fallback |
 | Left/Right, Home/End | Move the prompt cursor |
 | Backspace/Delete, Ctrl-U | Remove text or clear the prompt |
@@ -88,6 +107,8 @@ fishnet tui --no-start
 fishnet stop
 ```
 
+A service from an earlier binary must be restarted before chat works. Finish active work, run `fishnet stop`, then reopen fishnet. Pending grants and journals remain. The client checks `conversation-v1` before sending a chat request. It never retries a submission to an incompatible host.
+
 An explicit connection only attaches; it never starts or replaces a host.
 A task file opens a prefilled form and does not approve execution. The host
 remains alive after detach. `fishnet stop` requests shutdown and cancellation of
@@ -111,7 +132,7 @@ details. Errors and uncertain command outcomes remain visible across reconnect.
 The view retains 128 transcript entries with 4096-byte, 48-line previews, plus
 256 recent diagnostic lines with 512-byte previews and 16 status entries. The
 prompt is limited to 4096 bytes; file fields to 512 bytes. Truncation is marked.
-Full journals remain on disk. Only completed durable events are displayed.
+Full journals remain on disk. Chat check bookkeeping stays in details; the footer retains its unverified outcome. Only completed durable events are displayed.
 Reconnect never repeats operations. Replayed event sequences are not appended
 twice. A lost command response remains uncertain until inspection.
 

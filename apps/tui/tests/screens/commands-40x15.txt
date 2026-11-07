@@ -9,7 +9,7 @@
    /review    Review pending file and…
   │
   │ /rev▏
-  │ Rust · host default
+  │ Code · host default
   │
   workspa…   / commands · ctrl+p tasks
    RUNNING

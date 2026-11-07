@@ -11,7 +11,7 @@
    /fixture   Run the offline example
   │
   │ /fix▏
-  │ Rust · requested-model
+  │ Chat · requested-model
   │
   fishnet                                  / commands   ctrl+p tasks   F1 help
 

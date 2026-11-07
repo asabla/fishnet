@@ -18,7 +18,7 @@
   │
   │ Fix the result.
   │ Keep the existing test.▏
-  │ Rust · host default
+  │ Code · host default
   │
   workspace                                / commands   ctrl+p tasks   F1 help
    RUNNING · checks still required

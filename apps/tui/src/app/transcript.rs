@@ -27,13 +27,43 @@ pub struct Entry {
 }
 
 /// Project durable observations into display content; retain raw events separately.
-pub(super) fn append(entries: &mut VecDeque<Entry>, event: &Event) {
+pub(super) fn append(entries: &mut VecDeque<Entry>, event: &Event, conversation: bool) {
+    if conversation
+        && matches!(
+            &event.data,
+            EventData::OperationStarted {
+                request: OperationRequest::Check { .. }
+            } | EventData::OperationFinished {
+                result: OperationResult::Check { .. }
+            } | EventData::TaskFinished { .. }
+        )
+    {
+        // The footer retains the host outcome. Keep check bookkeeping in details.
+        return;
+    }
+    if let EventData::RunCreated { contract, .. } = &event.data
+        && let Some(context) = &contract.conversation
+    {
+        for message in &context.messages {
+            entries.push_back(Entry {
+                kind: match message.role {
+                    fishnet_core::conversation::Role::User => EntryKind::User,
+                    fishnet_core::conversation::Role::Assistant => EntryKind::Assistant,
+                },
+                text: bounded(&message.text),
+                operation_id: None,
+            });
+        }
+        return;
+    }
     let Some((kind, text)) = content(&event.data) else {
         return;
     };
     let mut text = bounded(&text);
     if matches!(event.data, EventData::OperationFinished { .. }) {
-        if let Some(duration) = event.duration_us {
+        if matches!(kind, EntryKind::Tool | EntryKind::Check | EntryKind::Error)
+            && let Some(duration) = event.duration_us
+        {
             let _ = write!(text, "  ({} ms)", duration / 1000);
         }
         if let Some(previous) = entries

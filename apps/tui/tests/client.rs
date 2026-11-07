@@ -200,7 +200,7 @@ fn approval_review_shows_the_grant_and_uses_its_revision() -> TestResult {
     ] {
         assert!(text.contains(required), "missing {required}");
     }
-    assert!(screen(&app, 120, 36)?.contains("Review host grant"));
+    assert!(screen(&app, 120, 36)?.contains("Allow provider access?"));
     assert!(
         matches!(app.key(key(KeyCode::Char('y'))),Some(Action::Approve {id,decision}) if id=="task-one" && decision.approve && decision.expected_revision==7)
     );

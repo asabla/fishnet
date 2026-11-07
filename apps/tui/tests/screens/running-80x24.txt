@@ -17,8 +17,8 @@
 
 
   │
-  │ ▏Describe a Rust task…
-  │ Rust · host default
+  │ ▏Describe a code change…
+  │ Code · host default
   │
   workspace                                / commands   ctrl+p tasks   F1 help
    RUNNING · checks still required

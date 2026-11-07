@@ -10,8 +10,8 @@
 
 
   │
-  │ ▏Describe a Rust task…
-  │ Rust · host default
+  │ ▏Message fishnet…
+  │ Chat · host default
   │
   workspace                                / commands   ctrl+p tasks   F1 help
 

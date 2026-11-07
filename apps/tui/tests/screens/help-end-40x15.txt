@@ -1,15 +1,15 @@
   Improve terminal rendering
-
   Help────────────────────────────────
+    establish verified success.
 
     Leaving
 
-    Ctrl-C detaches immediately.
-    Accepted work continues.
+    Ctrl-C detaches. Accepted work
+    continues.
     Use fishnet stop outside the TUI
     to stop the service.
-    Cancellation can leave completed
-    edits. It does not roll them
-    back.
+    Cancellation does not roll back
+    completed edits.
     Up/Down Scroll  Esc Close
-    Rows 54–63 of 63
+    Rows 59–68 of 68
+   RUNNING

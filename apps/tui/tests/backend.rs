@@ -35,7 +35,7 @@ fn actual_terminal_bytes_follow_the_selected_colour_policy() -> TestResult {
             String::from_utf8_lossy(&output.stderr)
         );
         let text = String::from_utf8(output.stdout)?;
-        assert!(text.contains("Describe a Rust task"));
+        assert!(text.contains("Message fishnet"));
         assert!(text.contains("host default"));
         assert_eq!(
             text.contains("38;2;135;163;218"),

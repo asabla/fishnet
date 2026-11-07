@@ -1,6 +1,4 @@
   Improve terminal rendering
-
-    Tool details remain available
   File access─────────────────────────
     Wrap long output and keep
     approval controls visible when
@@ -13,3 +11,5 @@
     Blank: no source edits.
     Named files must change.
     Enter Review grant · Esc Edit
+  workspa…   / commands · ctrl+p tasks
+   RUNNING

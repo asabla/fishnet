@@ -1,0 +1,15 @@
+  fishnet
+  Allow provider access?──────────────
+    ChatGPT account · default · host
+    default
+
+    Send messages in this
+    conversation to this provider.
+    Only conversation messages are
+    sent.
+    No automatic file reads or
+    commands are permitted.
+
+    Enter Allow  n No  F2 More  Esc
+    Rows 1–10 of 14
+   AWAITING APPROVAL · /review

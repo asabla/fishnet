@@ -1,5 +1,5 @@
 use super::{elide, theme};
-use crate::app::{App, COMMANDS};
+use crate::app::{App, COMMANDS, Mode};
 use ratatui::{
     Frame,
     layout::Rect,
@@ -92,7 +92,11 @@ fn prompt_lines(app: &App, style: Style) -> Vec<Line<'_>> {
             ];
             if app.composer.text.is_empty() {
                 spans.push(Span::styled(
-                    "Describe a Rust task…",
+                    if app.mode == Mode::Chat {
+                        "Message fishnet…"
+                    } else {
+                        "Describe a code change…"
+                    },
                     theme::muted().bg(theme::SURFACE),
                 ));
             }
@@ -147,7 +151,14 @@ fn metadata(frame: &mut Frame<'_>, app: &App, area: Rect) {
     );
     frame.render_widget(
         Paragraph::new(Line::from(vec![
-            Span::styled("Rust", theme::surface().fg(theme::ACCENT)),
+            Span::styled(
+                if app.mode == Mode::Chat {
+                    "Chat"
+                } else {
+                    "Code"
+                },
+                theme::surface().fg(theme::ACCENT),
+            ),
             Span::styled(label, theme::surface()),
         ])),
         area,

@@ -13,7 +13,7 @@ use ratatui::{
 
 use crate::app::{App, Modal, NoticeLevel, safe, status};
 
-const HELP: &str = "Writing\n\nType a Rust task in the prompt. Enter opens file access selection, then the host grant. No provider call starts before approval. Each submission is a separate task; prior task text is not sent as conversation context.\n\nEnter          Prepare task or run slash command\nAlt/Shift-Enter or Ctrl-J  New line\nLeft/Right     Move the text cursor\nHome/End       Start or end of prompt\nCtrl-U         Clear prompt\nTab            Complete a unique slash command\nCtrl-P         Open saved tasks\nPageUp/PageDown Scroll conversation\nEsc            Follow latest output; close a dialog\nF1 / F2        Help / details\n\nCommands\n\n/new       Start a new task\n/tasks     Open saved tasks\n/review    Review pending access\n/cancel    Request cancellation confirmation\n/details   Diagnostics and recent event output\n/fixture   Offline example; no account needed\n/taskfile  Advanced task contract\n/refresh   Refresh connection\n/help      This help\n/quit      Detach after command acknowledgement\n\nApproval\n\ny approves; n rejects; arrows scroll; Esc closes.\nOnly independent host checks can establish verified success.\n\nLeaving\n\nCtrl-C detaches immediately. Accepted work continues.\nUse fishnet stop outside the TUI to stop the service.\nCancellation can leave completed edits. It does not roll them back.";
+const HELP: &str = "Writing\n\nType a message. Enter sends it after initial provider consent. Conversation history is retained locally and sent with later messages. Chat cannot read files or run commands. Responses are unverified.\n\nUse /code for an explicit code task with file selection and a host grant. Each code task is separate.\n\nEnter          Send message or run command\nAlt/Shift-Enter or Ctrl-J  New line\nLeft/Right     Move the text cursor\nHome/End       Start or end of prompt\nCtrl-U         Clear prompt\nTab            Complete a unique slash command\nCtrl-P         Open saved tasks\nPageUp/PageDown Scroll conversation\nEsc            Follow latest output; close dialog\nF1 / F2        Help / details\n\nCommands\n\n/new /chat  Start a new conversation\n/code       Prepare an explicit code task\n/tasks      Open saved tasks\n/review     Review pending consent or access\n/cancel     Request cancellation confirmation\n/details    Diagnostics and recent event output\n/fixture    Offline tool example\n/taskfile   Advanced task contract\n/refresh    Refresh connection\n/quit       Detach after acknowledgement\n\nConsent\n\nEnter or y approves; n rejects; F2 toggles full details.\nOnly independent checks establish verified success.\n\nLeaving\n\nCtrl-C detaches. Accepted work continues.\nUse fishnet stop outside the TUI to stop the service.\nCancellation does not roll back completed edits.";
 
 /// Draw a conversation and a persistent prompt. The service owns task state.
 pub fn draw(frame: &mut Frame<'_>, app: &mut App) {
@@ -179,14 +179,33 @@ fn normalize_dialog(app: &mut App, area: Rect) {
     let Some(modal) = &mut app.modal else {
         return;
     };
-    let (text, scroll) = match modal {
-        Modal::Review { text, scroll, .. } | Modal::Notice { text, scroll } => {
-            (text.as_str(), scroll)
+    let compact = matches!(
+        modal,
+        Modal::Review {
+            expanded: false,
+            ..
         }
+    );
+    let (text, scroll) = match modal {
+        Modal::Review {
+            text,
+            summary,
+            expanded,
+            scroll,
+            ..
+        } => (
+            if *expanded {
+                text.as_str()
+            } else {
+                summary.as_str()
+            },
+            scroll,
+        ),
+        Modal::Notice { text, scroll } => (text.as_str(), scroll),
         Modal::Help { scroll } => (HELP, scroll),
         _ => return,
     };
-    let dialog = dialog_area(area, 28);
+    let dialog = dialog_area(area, if compact { 14 } else { 28 });
     let inner = modal_block("").inner(dialog);
     let rows = Paragraph::new(text)
         .wrap(Wrap { trim: false })
@@ -216,6 +235,8 @@ fn caption(app: &App, width: u16) -> Line<'static> {
         " · /review"
     } else if app.scroll > 0 {
         " · Esc latest"
+    } else if label == "RUNNING" && app.conversation.is_some() {
+        " · responding"
     } else if label == "RUNNING" && width >= 60 {
         " · checks still required"
     } else {
@@ -337,6 +358,9 @@ fn dialog(frame: &mut Frame<'_>, modal: &Modal, area: Rect) {
     let height = match modal {
         Modal::Scope { .. } | Modal::Code { .. } => 12,
         Modal::Cancel(_) => 10,
+        Modal::Review {
+            expanded: false, ..
+        } => 14,
         _ => 28,
     };
     let inset = dialog_area(area, height);
@@ -353,12 +377,22 @@ fn dialog(frame: &mut Frame<'_>, modal: &Modal, area: Rect) {
             focus,
             cursor,
         } => code_form(frame, fields, *focus, *cursor, inset),
-        Modal::Review { text, scroll, .. } => text_dialog(
-            frame,
-            "Review host grant",
+        Modal::Review {
             text,
+            summary,
+            expanded,
+            scroll,
+            ..
+        } => text_dialog(
+            frame,
+            if *expanded {
+                "Full grant details"
+            } else {
+                "Allow provider access?"
+            },
+            if *expanded { text } else { summary },
             *scroll,
-            "y Approve  n Reject  Esc Close",
+            "Enter Allow  n No  F2 More  Esc",
             inset,
         ),
         Modal::Cancel(id) => text_dialog(
@@ -395,7 +429,7 @@ fn dialog_area(area: Rect, max_height: u16) -> Rect {
     let height = area.height.saturating_sub(2).min(max_height);
     Rect::new(
         column.x,
-        area.y + area.height - height,
+        area.y + area.height.saturating_sub(height) / 2,
         column.width,
         height,
     )
@@ -403,8 +437,9 @@ fn dialog_area(area: Rect, max_height: u16) -> Rect {
 
 fn modal_block(title: &str) -> Block<'_> {
     Block::default()
+        .style(theme::surface())
         .borders(Borders::TOP)
-        .border_style(theme::muted())
+        .border_style(theme::muted().bg(theme::SURFACE))
         .padding(Padding::horizontal(2))
         .title(title)
 }
@@ -421,7 +456,9 @@ fn text_dialog(
     let inner = block.inner(area);
     frame.render_widget(block, area);
     let [body, footer] = Layout::vertical([Constraint::Min(1), Constraint::Length(2)]).areas(inner);
-    let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+    let paragraph = Paragraph::new(text)
+        .style(theme::surface())
+        .wrap(Wrap { trim: false });
     let rows = paragraph.line_count(body.width);
     let offset = usize::from(scroll).min(rows.saturating_sub(usize::from(body.height)));
     frame.render_widget(
@@ -430,12 +467,19 @@ fn text_dialog(
     );
     frame.render_widget(
         Paragraph::new(format!(
-            "{hint}\nRows {}–{} of {rows}",
-            offset + 1,
-            (offset + usize::from(body.height)).min(rows)
+            "{hint}\n{}",
+            if rows > usize::from(body.height) {
+                format!(
+                    "Rows {}–{} of {rows}",
+                    offset + 1,
+                    (offset + usize::from(body.height)).min(rows)
+                )
+            } else {
+                String::new()
+            }
         ))
         .wrap(Wrap { trim: false })
-        .style(Style::default().add_modifier(Modifier::DIM)),
+        .style(theme::surface().add_modifier(Modifier::DIM)),
         footer,
     );
 }
@@ -451,7 +495,12 @@ fn scope_form(frame: &mut Frame<'_>, objective: &str, files: &str, cursor: usize
         Constraint::Length(1),
     ])
     .areas(inner);
-    frame.render_widget(Paragraph::new(objective).wrap(Wrap { trim: false }), intent);
+    frame.render_widget(
+        Paragraph::new(objective)
+            .style(theme::surface())
+            .wrap(Wrap { trim: false }),
+        intent,
+    );
     field(
         frame,
         "Files to change (comma-separated)",
@@ -463,10 +512,13 @@ fn scope_form(frame: &mut Frame<'_>, objective: &str, files: &str, cursor: usize
     frame.render_widget(
         Paragraph::new("Blank: no source edits.\nNamed files must change.")
             .wrap(Wrap { trim: false })
-            .style(theme::muted()),
+            .style(theme::muted().bg(theme::SURFACE)),
         explanation,
     );
-    frame.render_widget(Paragraph::new("Enter Review grant · Esc Edit"), footer);
+    frame.render_widget(
+        Paragraph::new("Enter Review grant · Esc Edit").style(theme::surface()),
+        footer,
+    );
 }
 
 fn code_form(frame: &mut Frame<'_>, fields: &[String; 3], focus: usize, cursor: usize, area: Rect) {
@@ -524,7 +576,9 @@ fn field(frame: &mut Frame<'_>, label: &str, value: &str, active: bool, cursor: 
     let width = usize::from(input.width.saturating_sub(1));
     let offset = column.saturating_sub(width);
     frame.render_widget(
-        Paragraph::new(text).scroll((0, u16::try_from(offset).unwrap_or(u16::MAX))),
+        Paragraph::new(text)
+            .style(theme::surface())
+            .scroll((0, u16::try_from(offset).unwrap_or(u16::MAX))),
         input,
     );
     if active && input.width > 0 && input.height > 0 {

@@ -1,0 +1,24 @@
+  fishnet
+
+  │ Hello fishnet
+
+
+  Allow provider access?──────────────────────────────────────────────────────
+    ChatGPT account · default · host default
+
+    Send messages in this conversation to this provider.
+    Only conversation messages are sent.
+    No automatic file reads or commands are permitted.
+
+    Consent also covers later messages in this conversation.
+    Responses are unverified. /new starts a separate conversation.
+
+
+
+    Enter Allow  n No  F2 More  Esc
+
+  │ ▏Message fishnet…
+  │ Chat · host default
+  │
+  workspace                                / commands   ctrl+p tasks   F1 help
+   AWAITING APPROVAL · /review
