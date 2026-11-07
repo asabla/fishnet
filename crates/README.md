@@ -1,5 +1,8 @@
 # Rust libraries
 
-Create actual crates during implementation. Begin with only the boundaries required by M1: core execution and shared protocol types if separating them is justified.
+`fishnet-core` owns protocol types, fixture responses, the read-only tool, task
+state, execution limits, completion checks, run journals, and local incidents.
+It does not depend on the CLI or another agent runtime.
 
-Later responsibilities may include providers, tools, plugins, workspace, context, storage, diagnostics, and evaluation. These do not all need separate crates. The core must not depend on a client UI. Keep transport adapters outside the execution semantics.
+The CLI is the other workspace package. Other architecture components remain
+future work. Add crate boundaries when a tested responsibility needs them.

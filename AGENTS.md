@@ -28,7 +28,7 @@ Treat requirements as requirements and proposed technologies as candidates. The 
 
 ## Scope of this initial package
 
-The initial repository is documentation and placeholders only. That is its current state, not a permanent prohibition on code. An implementation request authorizes code for the requested milestone. Do not implement all future milestones merely because they are documented.
+The supplied initial package contained documentation and placeholders only. M1 now provides the deterministic Rust harness. See `docs/implementation.md` for current status. An implementation request authorizes code for the requested milestone. Do not implement all future milestones merely because they are documented.
 
 ## Validation and delivery
 
@@ -39,3 +39,11 @@ Test crash recovery at side-effect boundaries. Never retry an uncertain external
 Update status and decisions as work progresses. Report changes, checks actually run, remaining limitations, and the next milestone. Do not invent benchmark numbers or time estimates. Do not commit or push unless requested. Do not install project content as a global agent skill.
 
 Use direct, formal language. Follow ASD-STE100 principles for technical explanations: short sentences, consistent terms, and explicit actions. Do not use emojis.
+
+## Rust quality and code intent
+
+Follow [docs/development.md](docs/development.md). Use the pinned toolchain,
+workspace lint settings, and `./scripts/check.sh`. Review statement groups,
+function responsibilities, ownership, error propagation, and resource lifetime.
+Use Conventional Commits. When the user authorizes commits, keep changes in
+logical groups. Do not push without a user request.

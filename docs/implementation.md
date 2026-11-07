@@ -1,8 +1,10 @@
 # Implementation plan
 
-All implementation milestones are pending. The initial package contains documentation only. Each stage must produce a usable increment and evidence; do not create all components at once.
+M1 is complete as of 2026-11-07. M2 through M7 are pending. Each stage must produce a usable increment and evidence. See [M1 acceptance evidence](m1-evidence.md).
 
 ## M1: Deterministic local vertical slice
+
+Status: complete. The CLI, owned Rust loop, fixture tool, durable records, and independent checks pass the local acceptance cases. See [commands and limitations](m1-evidence.md).
 
 Goal: exercise the owned execution loop without network access or credentials.
 

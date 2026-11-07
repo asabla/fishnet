@@ -1,6 +1,6 @@
 # Requirements
 
-Status: recorded user requirements and derived constraints; implementation has not started.
+Status: recorded user requirements and derived constraints. M1 is implemented; see [acceptance evidence](m1-evidence.md). Later product capabilities remain pending.
 
 ## Fixed requirements
 

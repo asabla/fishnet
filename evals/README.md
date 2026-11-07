@@ -1,6 +1,6 @@
 # Task evaluations
 
-This directory is reserved for evaluation definitions and sanitized cases. It contains no executable evaluator yet.
+M1 fixture outcome checks and behavioral cases run in `crates/fishnet-core/tests/`. See [cases](cases/README.md). A live strategy evaluator and policy experiments remain future work.
 
 Each future case must specify: requested outcome; constraints; initial workspace/environment; completion checks protected from candidate edits; permitted tools; resource limits; baseline/candidate policy versions; model settings; repeated-trial policy; cache conditions; and expected evidence.
 

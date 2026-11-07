@@ -4,9 +4,9 @@ Resolve a decision when the current milestone needs it. Avoid speculative depend
 
 | Decision | Options or questions | Required evidence |
 | --- | --- | --- |
-| Rust toolchain and crate boundaries | Stable toolchain; small workspace | Build and maintenance needs of the first slice |
-| Async/runtime stack | Tokio or justified alternative | Cancellation, process, streaming, and portability support |
-| Persistence | SQLite or another embedded store | Crash consistency, migrations, contention, backup and retention |
+| Rust toolchain and crate boundaries | M1: Rust 1.94.1, core and CLI; [ADR-0001](decisions/0001-rust-workspace-and-quality.md) | Offline local checks passed; revisit boundaries when needed |
+| Async/runtime stack | M1: synchronous Rust owner with interruptible fixture waits; async choice deferred | M2 provider/process requirements will guide the async decision |
+| Persistence | M1: bounded JSONL journals; [ADR-0002](decisions/0002-run-journal-and-fixture-evidence.md) | Process restart tests passed; concurrent storage and migrations remain future work |
 | Remote interface | HTTP/SSE, WebSocket, ACP adapter | Reconnection, approvals, terminal streams, SDK generation |
 | First model provider | Direct API adapter selected for available credentials | Streaming/tool-call fixture coverage and capability limits |
 | Middleware runtime | TypeScript/Python worker, Lua, Wasm | Authoring experience, cancellation, isolation, overhead |
