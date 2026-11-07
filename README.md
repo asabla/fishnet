@@ -1,103 +1,69 @@
 # fishnet
 
-fishnet is an independent Rust agent harness. M1 provides offline fixtures. M2
-adds direct model access, controlled repository edits, approved commands, and
-independent coding checks. The Rust core owns
-the loop, execution policy, task state, cancellation, and local diagnostics.
+An independent Rust agent harness. Fishnet owns its model/tool loop, task state,
+execution policy, checks, and local records.
 
-## Development commands
+## Start
 
-Run `make` or `make help` to see the available commands and examples.
+Use the pinned Rust toolchain. Populate the dependency cache once, then install:
 
 ```sh
-make setup  # Fetch locked dependencies; network access can be required
-make build  # Build offline
-make run    # Run a deterministic offline fixture
-make check  # Run the complete quality checks
+make setup
+make install
+fishnet
 ```
 
-Use `make run ARGS="--scenario negative"` for another fixture, or
-`make cli ARGS="inspect YOUR_RUN_ID --summary"` to inspect a run.
-See [development policy](docs/development.md) for all targets.
+Run fishnet in the project directory. It opens the terminal interface and starts
+a private local service if needed. No second terminal is required. From this
+checkout, `make run` opens the same interface. `make` lists development commands.
 
-## Terminal interface
+Press n to describe a Rust task and name exact files to change. The service
+prepares formatting, test, Clippy, and documentation checks. Review the full
+provider and file grant before approving it. Startup and preparation do not
+make model requests. Press f for an offline fixture, ? for help, and q to detach.
 
-Start the local service in one terminal:
+Connect your account with `fishnet auth login`. Credentials stay private. See
+[the development workflow](docs/using-fishnet.md) and [TUI usage](apps/tui/README.md).
+
+## Commands
 
 ```sh
-make daemon
+fishnet tasks
+fishnet status TASK_PREFIX
+fishnet watch TASK_PREFIX
+fishnet attach TASK_PREFIX
+fishnet cancel TASK_PREFIX
+fishnet stop
 ```
 
-Open its client in another terminal:
+Task IDs accept unique prefixes. Task and account output is readable by default;
+use `--json` for scripts. `fishnet --help` lists normal and advanced commands.
+Accepted tasks remain service-owned when the TUI detaches. Stop cancels active
+work. Pending approvals and run records remain inspectable after restart.
 
-```sh
-make tui
-```
-
-Press n for an offline fixture, ? for help, and q to detach. For coding, start
-the service with `make daemon ARGS="--allow-code"`, prepare a reviewed task, and
-use p then a in the TUI. See [TUI usage](apps/tui/README.md) and
-[the self-development workflow](docs/using-fishnet.md).
-
-## Run M1
-
-Use the pinned Rust toolchain. On a new machine, `cargo fetch --locked` populates
-the dependency cache. Fixture runs and default tests need no network access
-or provider credentials.
-
-```sh
-cargo run --offline --locked -p fishnet-cli -- run
-```
-
-The command emits JSON events and saves them under `.fishnet/runs/`. Read
-`task_id` from an event. Inspect that run from a new process:
-
-```sh
-cargo run --offline --locked -p fishnet-cli -- inspect YOUR_RUN_ID
-```
-
-Inspection never executes tools. An unfinished record stays incomplete. A model
-final message alone produces `unverified_completion`. Only the independent
-fixture check can produce `verified_success`.
-
-```sh
-cargo run --offline --locked -p fishnet-cli -- run --scenario repeated-invalid
-cargo run --offline --locked -p fishnet-cli -- run --scenario check-failure
-cargo run --offline --locked -p fishnet-cli -- run --scenario negative
-cargo run --offline --locked -p fishnet-cli -- run --step-delay-ms 10000 --deadline-ms 30000
-```
-
-Press Ctrl-C during the delayed run to request cancellation. See
-[CLI usage](apps/cli/README.md) for limits, scenarios, and exit codes.
-
-## Check the workspace
+## Development and evidence
 
 ```sh
 make check
+make fixture
 ```
 
-This calls `./scripts/check.sh` to run formatting, offline tests, strict Clippy,
-and rustdoc with the pinned toolchain. See the [development policy](docs/development.md)
-for enforced rules and manual code review requirements.
+Default tests and fixtures need no network or credentials. The quality command
+checks formatting, workspace tests, strict Clippy, and rustdoc. See
+[development policy](docs/development.md) for enforced checks and Code Intent
+review. [Technology decisions](docs/decisions/README.md) record selected details.
 
-## Status and boundaries
+M1 through M4 are implemented on the local macOS ARM64 host. The original M4
+checks established technical behavior but did not establish a usable normal
+workflow. The subsequent usability revision covers the single-command entry,
+guided task preparation, responsive layouts, and command acknowledgement at
+exit. See [M4 evidence](docs/m4-evidence.md) for current checks and limits.
+Fishnet's earlier ChatGPT self-development task is recorded in [M2 evidence](docs/m2-evidence.md).
 
-M1 through M4 are complete on the local macOS ARM64 host. Fishnet used the connected
-ChatGPT account to implement its own `inspect --summary` feature. The host's six
-independent checks passed. See [M2 evidence](docs/m2-evidence.md),
-[M1 evidence](docs/m1-evidence.md), [implementation status](docs/implementation.md),
-[M3 service evidence](docs/m3-evidence.md), [M4 terminal evidence](docs/m4-evidence.md), and
-[technology decisions](docs/decisions/README.md).
-
-Use [the development workflow](docs/using-fishnet.md) to connect a ChatGPT account
-and prepare a bounded coding task. API-key OpenAI and explicit Responses-compatible
-routes remain separate. Other native provider protocols need adapters and tests.
-
-Approved programs run with your OS permissions. Use reviewed task grants and
-trusted projects. The local daemon and common task client are available; see
-[service usage](services/daemon/README.md). The TUI is available. There is no OS
-sandbox, plugin host, knowledge backend, memory generation, or policy promotion.
-M5 is next.
+Approved commands use host OS permissions. There is no OS sandbox, plugin host,
+knowledge backend, memory generation, or automatic policy promotion. Generic
+Rust quality checks do not prove every behavioral requirement. Review diffs and
+add protected behavior checks when needed. M5 remains the next planned milestone.
 
 Read [AGENTS.md](AGENTS.md), [requirements](docs/requirements.md), and
-[architecture](docs/architecture.md) before making changes.
+[architecture](docs/architecture.md) before implementation work.

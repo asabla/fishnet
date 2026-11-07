@@ -9,7 +9,7 @@ Resolve a decision when the current milestone needs it. Avoid speculative depend
 | Persistence | M1: bounded JSONL journals; [ADR-0002](decisions/0002-run-journal-and-fixture-evidence.md) | Process restart tests passed; concurrent storage and migrations remain future work |
 | Remote interface | M3: authenticated loopback HTTP with versioned JSON and bounded event polling; [ADR-0005](decisions/0005-local-service-and-client-contract.md) | Offline contract cases and real CLI reconnect/restart passed; public hosting and browser clients remain open |
 | First model provider | M2: direct Responses, ChatGPT account access; [ADR-0004](decisions/0004-chatgpt-account-access.md) | ChatGPT live task passed; other live services and native protocols remain unqualified |
-| Terminal UI | M4: Ratatui 0.30.2 and Crossterm 0.29.0; [ADR-0006](decisions/0006-terminal-client-and-lifecycle.md) | Headless rendering/input and real PTY service checks passed on macOS; other terminals and accessibility remain unqualified |
+| Terminal UI | M4: Ratatui 0.30.2 and Crossterm 0.29.0; [ADR-0006](decisions/0006-terminal-client-and-lifecycle.md) | Wrapped layout, guided input, and real PTY service checks passed on macOS; [ADR-0007](decisions/0007-interactive-entry-and-guided-rust-tasks.md) records the usability revision; other terminals and accessibility remain unqualified |
 | Middleware runtime | TypeScript/Python worker, Lua, Wasm | Authoring experience, cancellation, isolation, overhead |
 | Compatibility scope | Portable/Codex/Claude packages; optional Hermes runtime adapter | Real fixtures and behavioral mappings |
 | Execution isolation | M2: explicit host argv grants and Unix process groups; OS sandbox undecided | Local macOS tests passed; trusted-project boundary only |

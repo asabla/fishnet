@@ -39,7 +39,7 @@ Acceptance: a client disconnect does not cancel accepted work; reconnect returns
 
 ## M4: TUI
 
-Status: complete on the local macOS ARM64 host. The terminal client shares M3 task state and supports approvals, cancellation, detach/reconnect, bounded output, and explicit outcomes. Offline TestBackend cases and real pseudo-terminal checks passed. See [M4 evidence](m4-evidence.md).
+Status: complete on the local macOS ARM64 host. The terminal client shares M3 task state and supports approvals, cancellation, detach/reconnect, bounded output, and explicit outcomes. The usability revision adds one-command startup, guided Rust tasks, readable CLI output, responsive layouts, and command acknowledgement at exit. Offline screen/input cases and real pseudo-terminal checks passed. See [M4 evidence](m4-evidence.md) for the remaining qualification limits.
 
 Build the TUI as a client of M3. Render task state, streamed output, approvals, cancellation, and bounded diagnostic summaries. Keep business logic in the service.
 

@@ -28,10 +28,12 @@ not print a message; the default `help` recipe prints the command list.
 | --- | --- |
 | `make setup` | Fetch locked dependencies; network access can be required |
 | `make build` | Build the workspace offline |
-| `make tui` | Open the terminal client; start the service in another terminal |
+| `make tui` | Open fishnet; start its local service if needed |
 | `make daemon` | Start the local task service; use `ARGS` for host options |
-| `make run` | Run the default offline fixture |
-| `make cli ARGS="..."` | Pass arguments to the local CLI; no arguments prints CLI help |
+| `make run` | Open fishnet; start its local service if needed |
+| `make fixture` | Run the default offline JSON fixture |
+| `make install` | Install the fishnet command from this checkout offline |
+| `make cli ARGS="..."` | Pass arguments to the local CLI; no arguments opens fishnet in an interactive terminal |
 | `make fmt` | Format Rust source files |
 | `make fmt-check` | Check formatting without changes |
 | `make test` | Run workspace tests offline |
@@ -40,7 +42,7 @@ not print a message; the default `help` recipe prints the command list.
 | `make check` | Call the canonical `./scripts/check.sh` quality command |
 | `make clean` | Remove Cargo artifacts; retain `.fishnet` runs and account files |
 
-For fixture options, use `make run ARGS="--scenario negative"`. For inspection,
+For fixture options, use `make fixture ARGS="--scenario negative"`. For inspection,
 use `make cli ARGS="inspect RUN_ID --summary"`. `ARGS` is a local developer
 command-line convenience. It does not change the core's tool authorization.
 Live account and coding commands require explicit CLI arguments. Cargo's

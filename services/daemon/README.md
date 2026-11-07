@@ -68,3 +68,20 @@ One coding task can execute at a time within a service. Further approvals remain
 pending until that task finishes or is cancelled. Read-only fixtures can use the
 other execution slots. Use one service host per working tree. Separate service
 stores and standalone commands do not share this execution lock.
+
+## Normal interactive startup
+
+`fishnet` now starts or reuses this working tree's local service. It uses a
+separate service process, enables coding preparation, and retains per-task grant
+approval. Startup makes no provider request. `fishnet stop` uses the authenticated
+`POST /v1/shutdown` command. Explicit `--connection` clients never start a host.
+Upgrade service and client together. See [ADR-0007](../../docs/decisions/0007-interactive-entry-and-guided-rust-tasks.md).
+
+The guided `rust` submission supplies an objective and exact paths. The host
+freezes a profile with fmt/test/Clippy/docs commands; clients do not supply argv.
+Preparation does not contact a provider. Known provider initialization failures
+before core execution have phase `failed`; uncertain interrupted execution has
+phase `interrupted`. Both remain persisted, distinct from verified completion.
+
+Task commands now show readable output. Add `--json` when consuming the examples
+above from scripts. The standalone utility behavior remains unchanged.

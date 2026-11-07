@@ -1,102 +1,114 @@
 # Developing fishnet with fishnet
 
-Use the local service and its terminal client for new interactive work. The
-Rust service owns accepted tasks, execution policy, checks, and records. The
-TUI can detach and reconnect without stopping the task.
+Install the command from the checkout, then open it in the project directory:
+
+```sh
+make install
+fishnet
+```
+
+For checkout development, `make run` opens the same interface. The command starts
+or attaches to the local Rust service. No second terminal is required. Startup
+makes no model request. The service owns accepted work after the interface exits.
 
 ## Connect the host account
 
 ```sh
-make cli ARGS="auth login"
-make cli ARGS="auth status"
-make cli ARGS="models"
+fishnet auth login
+fishnet auth status
+fishnet models
 ```
 
 Complete the printed sign-in URL in your browser. Review the account and plan
-permission. Tokens stay in `.fishnet/auth`. Do not paste them into chat or
-commit them. Account access and direct coding were qualified in M2; see
-[M2 evidence](m2-evidence.md). The service still determines current model access.
+permission. Tokens stay in `.fishnet/auth`. Do not paste or commit them. Status
+reads local data; model listing makes an account request. Account output is
+readable by default; use `--json` for scripts.
 
-## Start an interactive task
+## Prepare and review a task
 
-In the first terminal:
+Press n. State the required result and name exact files to change, separated by
+commas. Enter prepares a Rust task with fixed Cargo formatting, tests, Clippy,
+and documentation checks. It does not start a provider. Review the complete
+file grant, resolved commands, provider, account, model, checks, and limits.
+Press y to approve or n to reject.
+
+This profile requires Cargo.toml. It permits at most 32 exact file paths and
+requires each named file to change. Blank files prohibit source edits. Commands
+can still write build artifacts and have the user's OS permissions. Use trusted
+projects. The profile protects existing root AGENTS.md, rust-toolchain.toml,
+and scripts/check.sh. For different grants or protected behavioral checks, press
+p and use a reviewed contract under `tasks/`. See [task authoring](../tasks/README.md).
+
+The host repeats the selected checks after model completion. A final model
+message cannot establish success. Quality checks prove their listed criteria;
+they do not prove every claim about the requested behavior. Review the source
+diff before committing. Cancellation can leave completed edits or partial
+command effects. Fishnet does not roll back or blindly retry uncertain work.
+
+Press f for an offline fixture. Press ? for help. See [TUI usage](../apps/tui/README.md).
+
+## Inspect, detach, and stop
 
 ```sh
-make daemon ARGS="--allow-code"
+fishnet tasks
+fishnet status TASK_PREFIX
+fishnet watch TASK_PREFIX
+fishnet attach TASK_PREFIX
+fishnet cancel TASK_PREFIX
+fishnet stop
 ```
 
-In the second terminal:
+Task commands accept a unique ID prefix. They show readable output by default;
+use `--json` to retain complete machine-readable records. q waits for outstanding
+command acknowledgements, then detaches. Ctrl-C detaches immediately and reports
+pending or uncertain command identities. Accepted work continues. `fishnet stop`
+requests service shutdown and cancellation of active work. Pending approvals
+remain available after restart.
 
-```sh
-make tui
-```
-
-Use `make daemon` without `--allow-code` for offline fixtures only. Press n in
-the TUI for a fixture. For coding, create a reviewed JSON contract under `tasks/`
-using [task authoring](../tasks/README.md). Press p, enter its path and optional
-model/account, then submit. Press a to inspect the frozen provider, root, file
-grants, commands, limits, and independent checks. y approves; n rejects.
-
-The completed `tasks/bootstrap-summary.json` remains a qualification fixture.
-Its feature is already implemented. Do not rerun it unchanged; it requires a
-new source change. Write a new contract for the next task.
-
-The host repeats the selected checks after the model finishes. A model final
-message cannot establish success. Review the Git diff before committing.
-Cancellation can leave completed edits or partial command effects. Fishnet does
-not roll them back or automatically retry an uncertain operation. Approved
-programs run with the user's OS permissions; use trusted projects.
+Inspection and reconnect perform reads, not execution. The offline command
+`fishnet inspect TASK_ID --summary` reads a full journal without a running
+service. No operation is repeated to reconstruct state. Use one service host per
+working tree; separate hosts and standalone commands do not share the execution
+lock.
 
 ## Keep the running harness fixed during self-development
 
-Build and copy the service and client before a task rebuilds their source:
+Build and copy the command before a task rebuilds its source:
 
 ```sh
 make build
 mkdir -p .fishnet/bin
-cp target/debug/fishnetd .fishnet/bin/fishnetd
-cp target/debug/fishnet-tui .fishnet/bin/fishnet-tui
+cp target/debug/fishnet .fishnet/bin/fishnet
+.fishnet/bin/fishnet
 ```
 
-Start `.fishnet/bin/fishnetd --allow-code` and `.fishnet/bin/fishnet-tui` in
-separate terminals. These paths assume the default Cargo target directory.
-Restart the service only when you intend to load a new harness version. Existing
-unfinished work remains unknown after a crash; restart never replays it.
+These paths assume the default Cargo target directory. The same frozen command
+starts its service mode. Stop an existing service before changing its version.
+A disconnected client does not replace a running host. Unfinished work after a
+crash remains unknown; restart never replays it.
 
-## Inspect and reconnect
+## Advanced host configuration
+
+The automatic host uses the current working tree and its default ChatGPT account.
+For an explicit host or another provider, run one of these alternatives:
 
 ```sh
-make cli ARGS="task list"
-make cli ARGS="task status TASK_ID"
-make cli ARGS="task watch TASK_ID --after SEQUENCE"
-make tui ARGS="--attach TASK_ID"
+fishnet serve --allow-code
+fishnet serve --allow-code --provider openai --key-env OPENAI_API_KEY --model MODEL
+fishnet serve --allow-code --provider responses --endpoint https://PROVIDER/v1/responses --key-env PROVIDER_API_KEY --model MODEL
 ```
 
-q or Ctrl-C in the TUI detaches. Use c then y for explicit cancellation. The CLI
-`task cancel TASK_ID` uses the same service. Inspection and reconnect perform
-reads, not execution. The local `fishnet inspect TASK_ID --summary` command can
-read full journal evidence even when the daemon is stopped. See
-[TUI usage](../apps/tui/README.md) for keys and limits.
+Then run `fishnet`, or connect with `fishnet tui --connection PATH` for a custom
+store. Explicit connections never start a host. Use `fishnet serve --help` for
+root, store, account-directory, and bind options. Service logs from automatic
+startup are in `.fishnet/service/daemon.log`, with one bounded previous log.
 
-## Other provider routes
+Responses compatibility is not universal provider compatibility. Native adapters
+can be added behind ModelProvider. ChatGPT mode does not silently switch to
+API-key billing. Standalone M1 `run` and M2 `code` remain diagnostic/compatibility
+utilities; they do not gain daemon ownership. The completed bootstrap-summary
+contract is retained as evidence and must not be rerun unchanged.
 
-Configure a service API-key profile explicitly on the host:
-
-```sh
-make daemon ARGS="--allow-code --provider openai --key-env OPENAI_API_KEY --model MODEL"
-make daemon ARGS="--allow-code --provider responses --endpoint https://PROVIDER/v1/responses --key-env PROVIDER_API_KEY --model MODEL"
-```
-
-These are separate alternatives. Do not start two owners of the same service
-store. The second route requires a Responses-compatible API; it is not universal
-provider compatibility. Native adapters can be added behind `ModelProvider`.
-ChatGPT account mode does not silently switch to API-key billing.
-
-Use one service host per working tree. That service admits one coding task at a
-time and keeps further approvals pending. Separate hosts and standalone commands
-do not share the execution lock. Do not use them to edit the same tree concurrently.
-
-Standalone M1 `run` and M2 `code` commands remain available for compatibility.
-They do not gain daemon ownership or reconnect guarantees. Live coding through
-the new TUI was not run during qualification; see [M4 evidence](m4-evidence.md)
-for the independently checked terminal and service behavior.
+See [M2 evidence](m2-evidence.md) and [M4 evidence](m4-evidence.md) for checks and
+limits. Qualification of a local workflow does not establish support for every
+terminal, platform, project, or provider.

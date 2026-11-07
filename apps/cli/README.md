@@ -1,7 +1,15 @@
 # CLI
 
-The CLI calls the Rust core locally. It parses arguments, delivers Ctrl-C, and
-writes JSON. Execution policy, state, storage, and checks remain in the core.
+Run `fishnet` in the project directory for the normal interactive workflow.
+It opens the existing TUI library and starts or attaches to the local service.
+Use `fishnet tasks`, `status`, `watch`, `attach`, `cancel`, and `stop` for headless
+control. Task commands accept a unique ID prefix and show readable output;
+`--json` selects machine-readable output. Account commands also accept `--json`.
+Help never starts a service or makes an account request.
+
+See [the development workflow](../../docs/using-fishnet.md). The following M1
+commands remain explicit offline JSON diagnostic utilities. Execution policy,
+state, storage, and checks remain in the core.
 
 ```sh
 cargo run --offline --locked -p fishnet-cli -- --help
@@ -49,7 +57,8 @@ outcome. Inspection reports that state and does not retry it.
 ## Coding and account commands
 
 See [the development workflow](../../docs/using-fishnet.md) for `auth`, `models`,
-and `code`. Coding requires an explicit task file and opt-in provider access.
+and `code`. The standalone `code` utility requires an explicit task file and opt-in provider access.
+The interactive workflow can prepare a guided Rust grant without a task file.
 Default fixture runs and tests stay offline. `inspect RUN_ID --summary` omits
 full events and keeps the outcome, pending operations, and diagnostic counts.
 Inspection does not refresh credentials or make a network request.

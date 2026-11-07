@@ -3,6 +3,11 @@
 Status: complete on the local macOS ARM64 host, 2026-11-07. M3 was committed and
 verified before the terminal client was implemented. M5 remains pending.
 
+The sections before "Usability revision after user review" describe the initial
+M4 build and remain historical evidence. Use the revision below and current usage
+guides for current behavior and qualification limits. Technical milestone
+acceptance did not establish product readiness.
+
 ## Delivered behavior
 
 `fishnet-tui` is a client of the common service API. `make tui` opens task
@@ -107,3 +112,102 @@ CI are not qualified by these checks.
 
 The next planned milestone is M5: plugins, skills, and middleware. It was not
 started. See [TUI usage](../apps/tui/README.md) and the current development guide.
+
+## Usability revision after user review
+
+The initial technical acceptance did not establish a usable normal workflow.
+The user rejected the two-terminal startup, command syntax, and crude rendering.
+The revision stays in M4; it does not start M5.
+
+Delivered:
+
+- The installed `fishnet` command opens the interface and starts or reuses its
+  working tree's local service. Headless no-argument use prints help without
+  creating service/account files. Explicit custom connections only attach.
+- `make run` opens the app. `make install` installs the single command offline.
+  `make fixture` preserves the offline JSON fixture utility.
+- n describes a Rust task and exact files. The host freezes Cargo fmt, test,
+  Clippy, and documentation checks. Enter opens full grant review without a
+  provider request. Advanced reviewed task files remain available with p.
+- Activity wraps. Task states have complete labels. Task selection adapts to
+  width. Modal backgrounds clear unrelated content; help and review scroll and
+  retain their controls. Text fields support cursor editing and bounded paste.
+  Detailed identities, counts, measured timings, and uncertain statuses use v.
+- q waits for outstanding command acknowledgements. Ctrl-C detaches immediately
+  and prints pending/uncertain identities after restoring the terminal. Neither
+  path retries a command. Known pre-core provider initialization failures are
+  labelled failed; uncertain interrupted execution remains unknown.
+- Task and account output is readable by default, with explicit `--json` for
+  scripts. Task commands accept unique ID prefixes. `fishnet stop` requests
+  authenticated cancellation and shutdown. Upgrade client and host together.
+
+The current full quality gate passed with 81 offline tests, formatting, strict
+Clippy, and strict rustdoc. A separate Git export of
+`1138eebc9f157e126eacfbcea2980738e6dc0905` passed the same 81 tests and quality
+checks, with no account/run files and token, API-key, and secret environment
+variables removed. The export used the populated Cargo cache and shared build
+directory; it does not qualify an uncached installation. The eight retained row snapshots cover welcome,
+activity at normal/wide sizes, task input at 80x24 and 40x15, approval start/end,
+and help end. Additional assertions check wrapped output scrolling, 40x12 grant
+controls, Unicode cursor edits, complete outcome labels, and acknowledgement
+behavior. Snapshots are under `apps/tui/tests/screens/`; an update requires
+explicit `FISHNET_UPDATE_SNAPSHOTS=1` and review of the resulting rows.
+
+### Real process checks
+
+Ran the debug and installed release commands against a disposable Rust project.
+No fishnet repository file was placed in that provider-readable root. Retained
+local evidence is under `.fishnet/m4-usability`; it contains PTY transcripts,
+run journals, pre-live grant receipts, and verification logs. No account or
+connection credential file was copied into that evidence directory.
+
+- A single command started its private loopback service and opened the interface.
+- Fixture `502ef3f24e40d754fa2ac8da5c1677d026f425d5290f6ffc9dc3e953a9a7543e`
+  rendered verified success after its independent check.
+- The new-task form prepared grant
+  `84127b76824f7ab1aa71850dac026b6a58a49b2556104fa1e2c0d0df5f3474c1`.
+  Rejection persisted and made no provider request.
+- In the installed command, f followed immediately by q displayed the wait for
+  service acknowledgement, then detached. Fixture
+  `686cf430c1b58f958649a5b96304668bc72025a40bc8c87d3ea01701c878fbb9`
+  finished under service ownership. Each fixture retained one logical tool call.
+- The installed CLI displayed readable task rows and resolved 12-character
+  prefixes. Explicit JSON contained the full states and counts. Authenticated
+  shutdown completed.
+- Starting `fishnet attach` with a prefix restarted the service and reattached in
+  a 40x15 PTY. Both fixture journal SHA-256 values and the frozen pending grant
+  were unchanged. Approval wait across restart remained unknown. No operation
+  was replayed.
+- Grant review scrolled to its final disclosure in the small PTY while approval,
+  rejection, and close controls remained visible. Normal exit restored the
+  alternate screen. Color-enabled and NO_COLOR output were exercised.
+
+### Cancellation verification failure and correction
+
+The first source-export check at `a7f435c` failed the existing process-group
+cancellation test: its delayed child marker existed. Six isolated reruns passed;
+that did not establish a fix. The old test announced readiness in the parent and
+relied on the writer sleeping until cancellation. It could not distinguish a
+surviving child from a write that occurred before cancellation was scheduled.
+
+The revised fixture announces readiness in the actual child writer and waits
+for a release file that the test creates only after execution returns. Six gated
+trials passed. A controlled mutation that disabled process-group termination
+failed on the late marker as expected. Production termination source was
+restored unchanged. The full 81-test gate then passed. The initial failed export,
+original reruns, gated trials, and expected mutation failure remain separate
+verification records; they were not removed from the evidence.
+
+### Qualification boundary
+
+A live synthetic coding task was prepared as
+`5e37a8a7bace07e02096e70909e56f83df81a39ae56afc82013c109ecc2a710b`,
+with model `gpt-6.1-sol`, only `src/lib.rs` writable, and four fixed independent
+quality checks. It remains pending explicit account-use approval. No new live
+model success is claimed here. The earlier M2 live result is separate evidence.
+
+Native Terminal access was blocked by the computer-use tool. PTY behavior and
+headless screen rows are verified; actual rendering in that app, other terminal
+emulators, accessibility certification, Linux/Windows, and hosted CI are not.
+Commands still use host OS permissions. Guided Rust checks establish their
+listed criteria, not every behavioral claim about an objective.
