@@ -227,3 +227,63 @@ fn cli_rejects_invalid_options_without_creating_records() -> TestResult {
     assert!(!store.0.exists());
     Ok(())
 }
+
+#[test]
+fn command_help_and_headless_start_do_not_start_services_or_request_accounts() -> TestResult {
+    let store = Store::new();
+    fs::create_dir(&store.0)?;
+    for args in [
+        vec![],
+        vec!["--help"],
+        vec!["task", "--help"],
+        vec!["status", "--help"],
+        vec!["attach", "--help"],
+        vec!["auth", "--help"],
+        vec!["models", "--help"],
+        vec!["code", "--help"],
+        vec!["run", "--help"],
+        vec!["inspect", "--help"],
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_fishnet"))
+            .args(&args)
+            .current_dir(&store.0)
+            .output()?;
+        assert!(
+            output.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains("fishnet"));
+    }
+    assert!(!store.0.join(".fishnet").exists());
+    Ok(())
+}
+
+#[test]
+fn account_status_is_readable_and_json_is_explicit() -> TestResult {
+    let store = Store::new();
+    let directory = store
+        .0
+        .parent()
+        .ok_or("missing parent")?
+        .canonicalize()?
+        .join(store.0.file_name().ok_or("missing name")?);
+    let human = Store::command("auth")
+        .args(["status", "--auth-dir"])
+        .arg(&directory)
+        .output()?;
+    assert!(
+        human.status.success(),
+        "{}",
+        String::from_utf8_lossy(&human.stderr)
+    );
+    assert!(String::from_utf8_lossy(&human.stdout).contains("signed out. Run fishnet auth login."));
+    let json = Store::command("auth")
+        .args(["status", "--json", "--auth-dir"])
+        .arg(&directory)
+        .output()?;
+    assert!(json.status.success());
+    let status: Value = serde_json::from_slice(&json.stdout)?;
+    assert_eq!(status.get("connected"), Some(&Value::Bool(false)));
+    Ok(())
+}

@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 fishnet-core.workspace = true
 fishnet-service.workspace = true
+fishnet-tui.workspace = true
 serde_json.workspace = true
 ctrlc.workspace = true
 tokio.workspace = true

@@ -3,30 +3,40 @@ mod coding;
 mod inspection;
 
 use std::env;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 
 use fishnet_core::{Cancellation, Limits, RunOptions, Scenario, ScriptedProvider, TaskState, run};
 
-const HELP: &str = "fishnet: independent local agent harness
-Usage:
-  fishnet serve [SERVICE_OPTIONS]
-  fishnet task list|submit|status|watch|cancel|approve|reject [TASK_ID] [OPTIONS]
-  fishnet auth login|status|logout [--account LABEL] [--auth-dir DIR]
-  fishnet models [--account LABEL] [--auth-dir DIR]
-  fishnet code --task PATH [--root DIR] [--provider chatgpt|openai|responses]
-               [--model NAME] [--account LABEL] [--auth-dir DIR] [--store DIR]
-               [--endpoint URL] [--key-env NAME]
-  fishnet run [--scenario NAME] [--store DIR] [--deadline-ms N]
-              [--step-delay-ms N] [--max-output-bytes N] [--max-provider-calls N]
-  fishnet inspect RUN_ID [--store DIR] [--summary]
+const HELP: &str = "fishnet: independent Rust coding harness
 
-Scenarios: success, unverified, check-failure, repeated-invalid, negative, provider-failure
-Default store: .fishnet/runs. Output: JSON events for run; JSON record for inspect.
-Ctrl-C requests cancellation. Inspection never executes tools.
-Exit codes: 0 verified/inspection, 2 failed/error, 3 unverified, 130 cancelled.";
+  fishnet                         Open the terminal interface; start a local service if needed
+  fishnet --task tasks/FILE.json   Open a reviewed task file
+  fishnet attach TASK_ID           Reattach to a task
+  fishnet tasks                   List tasks
+  fishnet status TASK_ID           Show task state and approval details
+  fishnet watch TASK_ID            Follow task output
+  fishnet cancel TASK_ID           Cancel a task
+  fishnet stop                    Stop the local service and cancel active tasks
+  fishnet auth login|status|logout Connect a ChatGPT account
+  fishnet models                  List models available to that account
+
+Start fishnet in the project directory. Coding requires review and approval.
+The local service stays alive when the terminal client detaches.
+Use --help on a command for options. Use --json on task/account commands for scripts.
+
+Advanced:
+  fishnet tui [--connection PATH] [--attach ID] [--no-start]
+  fishnet serve [--allow-code] [SERVICE_OPTIONS]
+  fishnet task list|submit|status|watch|cancel|approve|reject [ID] [OPTIONS]
+  fishnet code --task PATH [PROVIDER_OPTIONS]  Standalone coding utility
+  fishnet run [--scenario NAME]              Offline JSON fixture utility
+  fishnet inspect RUN_ID [--summary]         Offline JSON journal inspection
+
+Exit codes: 0 successful command/verified task, 2 error, 3 unverified, 130 cancelled.
+A successful submission or inspection does not establish a successful task.";
 
 #[derive(Debug)]
 struct Arguments {
@@ -124,16 +134,78 @@ fn execute(args: Arguments) -> Result<u8, Box<dyn std::error::Error>> {
 }
 
 fn main() -> ExitCode {
-    let result = match env::args().nth(1).as_deref() {
-        Some("serve") => fishnet_service::daemon::launch(env::args().skip(2)).map(|()| 0),
-        Some("task") => fishnet_service::cli::execute(env::args().skip(2)),
-        Some("auth") => account::execute(env::args().skip(2), false),
-        Some("models") => account::execute(env::args().skip(2), true),
-        Some("code") => coding::execute(env::args().skip(2)),
-        Some("inspect") => inspection::execute(env::args().skip(2)),
-        _ => legacy(),
+    report(dispatch())
+}
+fn dispatch() -> Result<u8, Box<dyn std::error::Error>> {
+    let mut args = env::args().skip(1);
+    let first = args.next();
+    match first.as_deref() {
+        None if io::stdin().is_terminal() && io::stdout().is_terminal() => {
+            fishnet_tui::terminal::launch(args).map(|()| 0)
+        }
+        None | Some("--help" | "-h" | "help") => {
+            writeln!(io::stdout(), "{HELP}")?;
+            Ok(0)
+        }
+        Some("--version" | "-V") => {
+            writeln!(io::stdout(), "fishnet {}", env!("CARGO_PKG_VERSION"))?;
+            Ok(0)
+        }
+        Some("tui") => fishnet_tui::terminal::launch(args).map(|()| 0),
+        Some("--task" | "--attach" | "--model" | "--account" | "--connection" | "--no-start") => {
+            fishnet_tui::terminal::launch(first.into_iter().chain(args)).map(|()| 0)
+        }
+        Some("attach") => {
+            let id = args
+                .next()
+                .ok_or("attach requires a task ID; use fishnet tasks")?;
+            if matches!(id.as_str(), "--help" | "-h") {
+                return fishnet_tui::terminal::launch(std::iter::once("--help".into())).map(|()| 0);
+            }
+            fishnet_tui::terminal::launch(["--attach".into(), id].into_iter().chain(args))
+                .map(|()| 0)
+        }
+        Some("tasks") => fishnet_service::cli::execute(std::iter::once("list".into()).chain(args)),
+        Some("status" | "watch" | "cancel" | "stop") => {
+            fishnet_service::cli::execute(first.into_iter().chain(args))
+        }
+        Some("serve") => fishnet_service::daemon::launch(args).map(|()| 0),
+        Some("task") => fishnet_service::cli::execute(args),
+        Some("auth") => account::execute(args, false),
+        Some("models") => account::execute(args, true),
+        Some(command @ ("code" | "inspect" | "run")) => {
+            let args = args.collect::<Vec<_>>();
+            if args
+                .iter()
+                .any(|arg| matches!(arg.as_str(), "--help" | "-h"))
+            {
+                advanced_help(command)?;
+                Ok(0)
+            } else {
+                match command {
+                    "code" => coding::execute(args.into_iter()),
+                    "inspect" => inspection::execute(args.into_iter()),
+                    _ => legacy(),
+                }
+            }
+        }
+        Some(command) => Err(format!("unknown command: {command}; use fishnet --help").into()),
+    }
+}
+
+fn advanced_help(command: &str) -> io::Result<()> {
+    let text = match command {
+        "code" => {
+            "fishnet code --task PATH [--root DIR] [--model NAME] [--account LABEL]\n             [--provider chatgpt|openai|responses] [--endpoint URL] [--key-env NAME]\n             [--auth-dir DIR] [--store DIR]\nStandalone JSON coding utility. Use fishnet for interactive tasks and approvals."
+        }
+        "inspect" => {
+            "fishnet inspect RUN_ID [--store DIR] [--summary]\nRead a local run journal without a service, account, or tool replay. Output is JSON."
+        }
+        _ => {
+            "fishnet run [--scenario NAME] [--store DIR] [--deadline-ms N]\n            [--step-delay-ms N] [--max-output-bytes N] [--max-provider-calls N]\nOffline JSON fixture utility. Scenarios: success, unverified, check-failure,\nrepeated-invalid, negative, provider-failure. Default store: .fishnet/runs."
+        }
     };
-    report(result)
+    writeln!(io::stdout(), "{text}")
 }
 
 fn legacy() -> Result<u8, Box<dyn std::error::Error>> {

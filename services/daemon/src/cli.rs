@@ -10,6 +10,79 @@ use crate::{
     contract::{Approval, Phase, Submission, TaskRequest, TaskView},
 };
 
+const HELP: &str = "Task commands:
+  fishnet task list                         List tasks
+  fishnet task submit --task tasks/FILE.json Prepare a reviewed task file
+  fishnet task submit                       Run an offline fixture
+  fishnet task status ID                    Show outcome and pending grant
+  fishnet task watch ID                     Follow durable output; Ctrl-C detaches
+  fishnet task cancel ID                    Cancel accepted work
+  fishnet task approve ID --revision N      Approve the displayed grant revision
+  fishnet task reject ID --revision N       Reject that revision
+
+IDs accept a unique prefix. --json preserves machine-readable output.
+Options: --connection PATH, --request-id ID, --model NAME, --account LABEL,
+         --scenario NAME, --delay-ms N, --deadline-ms N, --after SEQUENCE.
+Use fishnet for the interactive workflow. Submission alone does not mean success.";
+
+fn short(id: &str) -> &str {
+    id.get(..12).unwrap_or(id)
+}
+async fn resolve(client: &Client, id: &str) -> CliResult<String> {
+    crate::contract::validate_key(id)?;
+    if id.len() == 64 {
+        return Ok(id.into());
+    }
+    let matches = client
+        .list()
+        .await?
+        .into_iter()
+        .filter(|task| task.task_id.starts_with(id))
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [task] => Ok(task.task_id.clone()),
+        [] => Err("no matching task; use fishnet tasks".into()),
+        _ => Err("task prefix is ambiguous; use more characters".into()),
+    }
+}
+fn show(view: &TaskView, json: bool) -> CliResult<()> {
+    if json {
+        return print(view);
+    }
+    println!(
+        "{}\nTask: {}",
+        crate::display::status(
+            view.phase,
+            view.run.as_ref().map(|r| r.state),
+            view.run.as_ref().is_some_and(|r| r.incomplete)
+        ),
+        view.task_id
+    );
+    if let Some(message) = &view.message {
+        println!("{}", crate::display::safe(message, 2048));
+    }
+    if let Some(run) = &view.run {
+        if let Some(outcome) = &run.outcome {
+            println!("{}", crate::display::safe(&outcome.reason, 2048));
+        }
+        println!(
+            "Model requests: {}  Tool calls: {}  Processes: {}",
+            run.statistics.provider_attempts,
+            run.statistics.logical_tool_calls,
+            run.statistics.process_attempts
+        );
+    }
+    if let Some(grant) = &view.approval {
+        println!(
+            "\n{}\nApprove: fishnet task approve {} --revision {}",
+            crate::display::review(grant),
+            short(&view.task_id),
+            grant.revision
+        );
+    }
+    Ok(())
+}
+
 type CliResult<T> = Result<T, Box<dyn std::error::Error>>;
 struct Options {
     command: String,
@@ -24,6 +97,7 @@ struct Options {
     account: String,
     after: u64,
     revision: u64,
+    json: bool,
 }
 
 /// Execute a thin service client command. Provider access and policy remain on the host.
@@ -31,7 +105,16 @@ struct Options {
 /// # Errors
 /// Returns input, connection, authorization, protocol, or output errors.
 pub fn execute(args: impl Iterator<Item = String>) -> CliResult<u8> {
-    let options = parse(args)?;
+    let args = args.collect::<Vec<_>>();
+    if args.is_empty()
+        || args
+            .iter()
+            .any(|arg| matches!(arg.as_str(), "--help" | "-h"))
+    {
+        println!("{HELP}");
+        return Ok(0);
+    }
+    let options = parse(args.into_iter())?;
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
@@ -63,8 +146,13 @@ fn parse(mut args: impl Iterator<Item = String>) -> CliResult<Options> {
         account: "default".into(),
         after: 0,
         revision: 1,
+        json: false,
     };
     while let Some(option) = args.next() {
+        if option == "--json" {
+            options.json = true;
+            continue;
+        }
         let value = args
             .next()
             .ok_or_else(|| format!("missing value for {option}"))?;
@@ -82,15 +170,39 @@ fn parse(mut args: impl Iterator<Item = String>) -> CliResult<Options> {
             _ => return Err(format!("unknown task option: {option}").into()),
         }
     }
+    if !matches!(
+        options.command.as_str(),
+        "list" | "submit" | "status" | "watch" | "cancel" | "approve" | "reject" | "stop"
+    ) {
+        return Err("unknown task command; use fishnet task --help".into());
+    }
     Ok(options)
 }
 
 async fn command(options: Options) -> CliResult<u8> {
+    if !options.connection.exists() {
+        return Err("No service connection file. Run fishnet in the project directory to start it, or use --connection PATH.".into());
+    }
     let client = Client::connect(&options.connection)?;
-    let id = options.id.as_deref().unwrap_or_default();
+    let id = if let Some(id) = &options.id {
+        resolve(&client, id).await?
+    } else {
+        String::new()
+    };
     let view = match options.command.as_str() {
         "list" => {
-            print(&client.list().await?)?;
+            show_tasks(client.list().await?, options.json)?;
+            return Ok(0);
+        }
+        "stop" => {
+            client.shutdown().await?;
+            if options.json {
+                print(&serde_json::json!({"shutdown_requested":true}))?;
+            } else {
+                println!(
+                    "Service shutdown requested. Active tasks are cancelled; pending approvals are retained."
+                );
+            }
             return Ok(0);
         }
         "submit" => {
@@ -111,14 +223,14 @@ async fn command(options: Options) -> CliResult<u8> {
                     },
                 }
             };
-            client.submit(Submission { request_id, task }).await?
+            client.submit(Submission { request_id:request_id.clone(), task }).await.map_err(|error|format!("Request {request_id}: {error}. Inspect the task list before retrying; no command was retried."))?
         }
-        "status" => client.snapshot(id).await?,
-        "cancel" => client.cancel(id).await?,
+        "status" => client.snapshot(&id).await?,
+        "cancel" => client.cancel(&id).await?,
         "approve" | "reject" => {
             client
                 .approve(
-                    id,
+                    &id,
                     Approval {
                         expected_revision: options.revision,
                         approve: options.command == "approve",
@@ -126,11 +238,35 @@ async fn command(options: Options) -> CliResult<u8> {
                 )
                 .await?
         }
-        "watch" => return watch(&options).await,
+        "watch" => {
+            let mut options = options;
+            options.id = Some(id);
+            return watch(&options).await;
+        }
         _ => return Err("unknown task command".into()),
     };
-    print(&view)?;
+    show(&view, options.json)?;
     Ok(0)
+}
+
+fn show_tasks(tasks: Vec<crate::contract::TaskSummary>, json: bool) -> CliResult<()> {
+    if json {
+        return print(&tasks);
+    }
+    let mut output = io::stdout().lock();
+    if tasks.is_empty() {
+        writeln!(output, "No tasks. Run fishnet to create one.")?;
+    }
+    for task in tasks {
+        writeln!(
+            output,
+            "{}  {}\n  {}",
+            short(&task.task_id),
+            crate::display::status(task.phase, task.state, false),
+            crate::display::safe(&task.objective, 160)
+        )?;
+    }
+    Ok(())
 }
 
 fn print(value: &impl serde::Serialize) -> CliResult<()> {
@@ -154,21 +290,35 @@ async fn watch(options: &Options) -> CliResult<u8> {
             Ok(page) => {
                 failures = 0;
                 if page.gap {
-                    print(&page)?;
+                    if options.json {
+                        print(&page)?;
+                    } else {
+                        println!(
+                            "Event history gap. Loading retained events; full journal remains on disk."
+                        );
+                    }
                     after = page.retained_from.saturating_sub(1);
                     continue;
                 }
                 for event in &page.events {
-                    print(event)?;
+                    if options.json {
+                        print(event)?;
+                    } else {
+                        println!("{}", crate::display::describe(&event.data));
+                    }
                 }
                 after = page.cursor;
                 if page.snapshot.phase.terminal() && after >= page.snapshot.cursor {
-                    print(&page.snapshot)?;
+                    show(&page.snapshot, options.json)?;
                     return Ok(exit_code(&page.snapshot));
                 }
             }
             Err(error) => {
-                print(&error)?;
+                if options.json {
+                    print(&error)?;
+                } else {
+                    eprintln!("{error}");
+                }
                 failures += 1;
                 if failures >= 5 || error.code != "disconnected" {
                     return Err(error.into());

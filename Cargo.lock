@@ -548,6 +548,7 @@ dependencies = [
  "ctrlc",
  "fishnet-core",
  "fishnet-service",
+ "fishnet-tui",
  "serde_json",
  "tokio",
 ]
