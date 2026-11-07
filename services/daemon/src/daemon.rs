@@ -11,9 +11,9 @@ use crate::{
 const HELP: &str = "fishnetd: local task service
 Usage: fishnetd [--root DIR] [--directory DIR] [--runs DIR]
                 [--bind 127.0.0.1:PORT] [--allow-code] [--auth-dir DIR]
-                [--provider chatgpt|openai|responses] [--endpoint URL]
+                [--provider chatgpt|openai|responses|fixture] [--endpoint URL]
                 [--key-env NAME] [--model NAME]
-Default: loopback, automatic port, .fishnet/service, coding disabled.
+Default: loopback, automatic port, .fishnet/service, provider tasks disabled. Fixture conversations are offline.
 Connection credentials are saved privately; they are never printed.
 Ctrl-C cancels active work and waits for owned cleanup.";
 
@@ -57,6 +57,7 @@ pub fn launch(
         }
     }
     config.provider = match provider.as_str() {
+        "fixture" if endpoint.is_none() => ProviderAccess::Fixture,
         "chatgpt" if endpoint.is_none() => ProviderAccess::Chatgpt { auth_directory },
         "openai" if endpoint.is_none() => ProviderAccess::ApiKey {
             endpoint: "https://api.openai.com/v1/responses".into(),
@@ -69,7 +70,7 @@ pub fn launch(
             default_model: model,
         },
         _ => return Err(
-            "provider must be chatgpt, openai, or responses; endpoint overrides require responses"
+            "provider must be chatgpt, openai, responses, or fixture; endpoint overrides require responses"
                 .into(),
         ),
     };

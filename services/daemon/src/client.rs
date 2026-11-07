@@ -84,6 +84,9 @@ impl Client {
     /// # Errors
     /// Returns authorization, validation, capacity, idempotency conflict, or transport errors.
     pub async fn submit(&self, request: Submission) -> Result<TaskView> {
+        if matches!(request.task, crate::contract::TaskRequest::Chat { .. }) {
+            self.require_conversation().await?;
+        }
         self.post("v1/tasks", request).await
     }
     /// # Errors
@@ -107,6 +110,22 @@ impl Client {
             "v1/tasks/{id}/events?after={after}&wait_ms={wait_ms}"
         ))
         .await
+    }
+    /// Check protocol support before a conversation can be submitted.
+    ///
+    /// # Errors
+    /// Returns a local, not-sent error when the host needs an upgrade or is unavailable.
+    pub async fn require_conversation(&self) -> Result<()> {
+        let capabilities: Vec<String> = self.get("v1/capabilities").await.map_err(|error| {
+                ApiError::new("not_sent", &format!("Conversation was not sent. Check the service version; finish active work, then run fishnet stop and reopen fishnet. {}", error.message))
+            })?;
+        if !capabilities.iter().any(|name| name == "conversation-v1") {
+            return Err(ApiError::new(
+                "not_sent",
+                "This service does not support conversations. Finish active work, run fishnet stop, then reopen fishnet.",
+            ));
+        }
+        Ok(())
     }
     async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
         self.request::<(), T>(Method::GET, path, None).await

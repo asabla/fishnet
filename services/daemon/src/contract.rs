@@ -32,6 +32,12 @@ pub struct Submission {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TaskRequest {
+    Chat {
+        message: String,
+        parent_task_id: Option<String>,
+        model: Option<String>,
+        account: String,
+    },
     Fixture {
         scenario: String,
         delay_ms: u64,
@@ -53,9 +59,9 @@ impl TaskRequest {
     #[must_use]
     pub fn model_account(&self) -> Option<(&Option<String>, &str)> {
         match self {
-            Self::Code { model, account, .. } | Self::Rust { model, account, .. } => {
-                Some((model, account))
-            }
+            Self::Code { model, account, .. }
+            | Self::Rust { model, account, .. }
+            | Self::Chat { model, account, .. } => Some((model, account)),
             Self::Fixture { .. } => None,
         }
     }
@@ -92,6 +98,8 @@ pub struct Approval {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ApprovalView {
+    #[serde(default)]
+    pub conversation: bool,
     pub revision: u64,
     pub root: std::path::PathBuf,
     pub objective: String,

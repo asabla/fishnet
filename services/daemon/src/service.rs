@@ -1,3 +1,4 @@
+mod conversation;
 mod draft;
 mod execution;
 pub mod local;
@@ -15,12 +16,13 @@ use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore, watch};
 use self::store::{Receipt, Store};
 use crate::contract::validate_key;
 use crate::contract::{
-    ApiError, Approval, ApprovalView, EventPage, PAGE_EVENTS, Phase, RETAINED_EVENTS, Result,
-    RunView, Submission, TaskRequest, TaskSummary, TaskView,
+    ApiError, Approval, EventPage, PAGE_EVENTS, Phase, RETAINED_EVENTS, Result, RunView,
+    Submission, TaskRequest, TaskSummary, TaskView,
 };
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ProviderAccess {
+    Fixture,
     Chatgpt {
         auth_directory: PathBuf,
     },
@@ -208,20 +210,25 @@ impl Service {
             ));
         }
         let prepared = self.prepare(&submission.task).await?;
-        let phase = if prepared.is_some() {
+        let task_id = crate::new_id()?;
+        let (conversation, inherited) = self
+            .prepare_conversation(&state, &submission.task, &task_id)
+            .await?;
+        let phase = if prepared.is_some() || (conversation.is_some() && !inherited) {
             Phase::AwaitingApproval
         } else {
             Phase::Accepted
         };
         let receipt = Receipt {
+            conversation,
             schema_version: 1,
-            decision: None,
+            decision: inherited.then_some(true),
             approval_wait_ms: if phase == Phase::AwaitingApproval {
                 None
             } else {
                 Some(0)
             },
-            task_id: crate::new_id()?,
+            task_id,
             submission,
             fingerprint,
             phase,
@@ -251,7 +258,7 @@ impl Service {
             if !self.inner.config.allow_code {
                 return Err(ApiError::new(
                     "forbidden",
-                    "service coding is disabled; stop the service, then run fishnet again or start fishnet serve --allow-code",
+                    "service provider tasks are disabled; stop the service, then run fishnet again or start fishnet serve --allow-code",
                 ));
             }
             validate_key(account)?;
@@ -262,7 +269,15 @@ impl Service {
                 return Err(ApiError::invalid("invalid model name"));
             }
         }
+        if matches!(request, TaskRequest::Code { .. } | TaskRequest::Rust { .. })
+            && self.inner.config.provider == ProviderAccess::Fixture
+        {
+            return Err(ApiError::invalid(
+                "fixture provider supports conversations only",
+            ));
+        }
         match request {
+            TaskRequest::Chat { .. } => Ok(None),
             TaskRequest::Fixture {
                 scenario,
                 delay_ms,
@@ -361,6 +376,7 @@ impl Service {
             ));
         }
         if approval.approve
+            && entry.receipt.prepared.is_some()
             && state.tasks.values().any(|other| {
                 other.receipt.prepared.is_some()
                     && matches!(other.receipt.phase, Phase::Accepted | Phase::Executing)
@@ -452,9 +468,18 @@ impl Service {
         let mut result = Vec::new();
         for receipt in receipts {
             let objective = receipt
-                .prepared
+                .conversation
                 .as_ref()
-                .map_or("Fixture task", |t| t.objective.as_str());
+                .and_then(|context| context.messages.last())
+                .map_or_else(
+                    || {
+                        receipt
+                            .prepared
+                            .as_ref()
+                            .map_or("Fixture task", |t| t.objective.as_str())
+                    },
+                    |message| message.text.as_str(),
+                );
             let objective = fishnet_core::protocol::BoundedText::new(objective, 160).text;
             let view = self.view(receipt).await?;
             result.push(TaskSummary {
@@ -713,45 +738,7 @@ fn not_found() -> ApiError {
 }
 
 fn view(receipt: Receipt, record: Option<&fishnet_core::RunRecord>) -> TaskView {
-    let approval = if receipt.phase == Phase::AwaitingApproval {
-        receipt.prepared.as_ref().map(|task| ApprovalView {
-            account: match (&receipt.provider, &receipt.submission.task) {
-                (
-                    ProviderAccess::Chatgpt { .. },
-                    TaskRequest::Code { account, .. } | TaskRequest::Rust { account, .. },
-                ) => account.clone(),
-                (ProviderAccess::ApiKey { .. }, _) => "host API-key profile".into(),
-                (_, TaskRequest::Fixture { .. }) => String::new(),
-            },
-            model: match &receipt.submission.task {
-                TaskRequest::Code { model, .. } | TaskRequest::Rust { model, .. } => {
-                    model.clone().or_else(|| match &receipt.provider {
-                        ProviderAccess::ApiKey { default_model, .. } => default_model.clone(),
-                        ProviderAccess::Chatgpt { .. } => None,
-                    })
-                }
-                TaskRequest::Fixture { .. } => None,
-            },
-            required_changes: task.workspace.required_changes.clone(),
-            protected_paths: task.workspace.protected_paths.clone(),
-            limits: task.limits.clone(),
-            revision: 1,
-            root: task.workspace.root.clone(),
-            objective: task.objective.clone(),
-            allowed_writes: task.workspace.allowed_writes.clone(),
-            commands: task.workspace.commands.clone(),
-            checks: task.workspace.checks.clone(),
-            provider: match &receipt.provider {
-                ProviderAccess::Chatgpt { .. } => "ChatGPT account".into(),
-                ProviderAccess::ApiKey { endpoint, .. } => format!("API key: {endpoint}"),
-            },
-            fingerprint: fishnet_core::provider::fingerprint(
-                &serde_json::to_vec(&(task, &receipt.provider)).unwrap_or_default(),
-            ),
-        })
-    } else {
-        None
-    };
+    let approval = conversation::approval(&receipt);
     TaskView {
         task_id: receipt.task_id,
         request_id: receipt.submission.request_id,

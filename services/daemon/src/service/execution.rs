@@ -14,6 +14,17 @@ pub(super) async fn execute(
     observe: impl FnMut(&Event) + Send,
 ) -> Result<()> {
     match &receipt.submission.task {
+        TaskRequest::Chat { model, account, .. } => {
+            execute_chat(
+                config,
+                receipt,
+                model.clone(),
+                account,
+                cancellation,
+                observe,
+            )
+            .await?;
+        }
         TaskRequest::Fixture {
             scenario,
             delay_ms,
@@ -62,6 +73,49 @@ pub(super) async fn execute(
     Ok(())
 }
 
+async fn execute_chat(
+    config: &Config,
+    receipt: &Receipt,
+    model: Option<String>,
+    account: &str,
+    cancellation: Cancellation,
+    observe: impl FnMut(&Event) + Send,
+) -> Result<()> {
+    let contract = receipt
+        .conversation
+        .clone()
+        .ok_or_else(ApiError::storage)?
+        .into_contract();
+    let options = RunOptions {
+        store: config.runs.clone(),
+        limits: fishnet_core::conversation::limits(),
+        contract,
+        cancellation,
+    };
+    if receipt.provider == ProviderAccess::Fixture {
+        fishnet_core::runtime::run_identified(
+            options,
+            fishnet_core::conversation::Fixture,
+            observe,
+            receipt.task_id.clone(),
+        )
+        .await
+        .map_err(|_| ApiError::storage())?;
+    } else {
+        let provider = provider(
+            &receipt.provider,
+            model.clone(),
+            account,
+            &options.cancellation,
+        )
+        .await?;
+        fishnet_core::runtime::run_identified(options, provider, observe, receipt.task_id.clone())
+            .await
+            .map_err(|_| ApiError::storage())?;
+    }
+    Ok(())
+}
+
 async fn provider(
     access: &ProviderAccess,
     model: Option<String>,
@@ -69,6 +123,11 @@ async fn provider(
     cancel: &Cancellation,
 ) -> Result<OpenAiProvider> {
     let result = match access {
+        ProviderAccess::Fixture => {
+            return Err(ApiError::invalid(
+                "fixture provider does not run coding tasks",
+            ));
+        }
         ProviderAccess::Chatgpt { auth_directory } => {
             let models = fishnet_core::auth::models(auth_directory, account, cancel)
                 .await

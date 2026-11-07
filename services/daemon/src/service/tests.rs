@@ -98,6 +98,7 @@ async fn seed(config: &Config) -> std::result::Result<(), Box<dyn Error>> {
     let fingerprint = fishnet_core::provider::fingerprint(&serde_json::to_vec(&submission)?);
     let store = Store::open(config.directory.clone())?;
     store.save(&Receipt {
+        conversation: None,
         schema_version: 1,
         decision: None,
         approval_wait_ms: Some(0),

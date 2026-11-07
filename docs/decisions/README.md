@@ -17,3 +17,5 @@ Accepted decisions:
 Fixed user requirements are in [requirements](../requirements.md).
 
 Use [template.md](template.md). Number records sequentially when needed. Record proposed, accepted, rejected, or superseded status. Include evidence, alternatives, consequences, and a reversal path. Routine reversible choices do not require stopping for user approval.
+
+- [ADR-0010: Conversation consent and bounded history](0010-conversation-consent-and-history.md)

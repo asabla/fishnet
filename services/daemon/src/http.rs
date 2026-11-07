@@ -35,6 +35,7 @@ pub fn router(service: Service) -> Router {
     };
     Router::new()
         .route("/v1/health", get(health))
+        .route("/v1/capabilities", get(capabilities))
         .route("/v1/shutdown", post(shutdown))
         .route("/v1/tasks", get(list).post(submit))
         .route("/v1/tasks/{id}", get(snapshot))
@@ -87,6 +88,9 @@ fn version<T>(request: Envelope<T>) -> Result<T> {
         return Err(ApiError::invalid("unsupported API version"));
     }
     Ok(request.data)
+}
+async fn capabilities() -> Json<Envelope<Vec<&'static str>>> {
+    Json(Envelope::new(vec!["conversation-v1"]))
 }
 async fn health() -> Json<Envelope<&'static str>> {
     Json(Envelope::new("ready"))

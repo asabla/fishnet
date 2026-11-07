@@ -195,6 +195,7 @@ fn new_task_edits_unicode_in_place_and_submits_intent_without_executing_it() -> 
 fn approval_controls_and_outcome_labels_remain_readable_after_resize() -> TestResult {
     let mut app = running();
     let grant = fishnet_service::contract::ApprovalView {
+        conversation: false,
         revision: 1,
         root: "/workspace/fishnet".into(),
         objective: "Keep the complete grant readable on resize".into(),

@@ -34,6 +34,9 @@ async fn ready() -> bool {
 
 async fn ensure_async(executable: &Path) -> Result<bool> {
     if ready().await {
+        Client::connect(Path::new(".fishnet/service/connection.json"))?
+            .require_conversation()
+            .await?;
         return Ok(false);
     }
     let log = super::store::launch_log(Path::new(".fishnet/service"))?;

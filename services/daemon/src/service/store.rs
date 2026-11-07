@@ -10,6 +10,8 @@ use crate::contract::{ApiError, Phase, Result, Submission, validate_key};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Receipt {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation: Option<fishnet_core::conversation::Context>,
     pub schema_version: u32,
     pub decision: Option<bool>,
     pub approval_wait_ms: Option<u64>,

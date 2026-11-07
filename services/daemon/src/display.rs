@@ -139,6 +139,15 @@ fn terminal_control(ch: char) -> bool {
 
 #[must_use]
 pub fn review(grant: &crate::contract::ApprovalView) -> String {
+    if grant.conversation {
+        return format!(
+            "{}\n\nDeadline: {} ms; response: {} bytes\nContext: at most 16 turns / 32 KiB; no silent truncation.\nGrant fingerprint: {}",
+            approval_summary(grant),
+            grant.limits.deadline_ms,
+            grant.limits.max_output_bytes,
+            grant.fingerprint
+        );
+    }
     let mut text = format!(
         "Provider: {}\nAccount: {}\nModel: {}\nRoot: {}\n\nObjective:\n{}\n\nWritable files:\n{}\nRequired changes:\n{}\nProtected files:\n{}\n\nIndependent checks: {}\nDeadline: {} ms; model turns: {}; output: {} bytes\n\nApproved commands:\n",
         safe(&grant.provider, 512),
@@ -173,4 +182,40 @@ pub fn review(grant: &crate::contract::ApprovalView) -> String {
         grant.fingerprint
     );
     text
+}
+
+/// Present the scope of consent without exposing transport or command syntax.
+#[must_use]
+pub fn approval_summary(grant: &crate::contract::ApprovalView) -> String {
+    let identity = format!(
+        "{} · {} · {}",
+        safe(&grant.provider, 512),
+        safe(&grant.account, 64),
+        safe(grant.model.as_deref().unwrap_or("host default"), 128)
+    );
+    if grant.conversation {
+        return format!(
+            "{identity}\n\nSend messages in this conversation to this provider.\nOnly conversation messages are sent.\nNo automatic file reads or commands are permitted.\n\nConsent also covers later messages in this conversation.\nResponses are unverified. /new starts a separate conversation."
+        );
+    }
+    format!(
+        "{identity}\nWorkspace: {}\n\nFiles to change: {}\nChecks: {}\n\nSource files and approved command output may be sent to this provider.\nCommands use the host OS permissions. Review full details with F2.",
+        safe(&grant.root.display().to_string(), 512),
+        if grant.allowed_writes.is_empty() {
+            "none".into()
+        } else {
+            grant
+                .allowed_writes
+                .iter()
+                .map(|s| safe(s, 512))
+                .collect::<Vec<_>>()
+                .join(", ")
+        },
+        grant
+            .checks
+            .iter()
+            .map(|s| safe(s, 64))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
 }

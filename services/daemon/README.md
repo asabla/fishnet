@@ -9,7 +9,7 @@ make daemon
 It binds to an automatic loopback port and saves `.fishnet/service/connection.json`
 with private permissions. It prints the endpoint and connection-file path, never
 the credential. Keep the file private. Start with `--allow-code` only when you
-want reviewed coding tasks to be available:
+want reviewed provider tasks to be available (the flag also gates conversation):
 
 ```sh
 make daemon ARGS="--allow-code"
@@ -85,3 +85,20 @@ phase `interrupted`. Both remain persisted, distinct from verified completion.
 
 Task commands now show readable output. Add `--json` when consuming the examples
 above from scripts. The standalone utility behavior remains unchanged.
+
+## Conversation contract
+
+The authenticated `/v1/capabilities` route advertises `conversation-v1`. A new
+client checks it before submitting chat. An older host must be restarted after
+active work finishes; clients do not replace it or retry a possibly sent command.
+
+`TaskRequest::Chat` contains a message, optional parent task ID, requested model,
+and account label. Root messages wait for provider consent. A completed approved
+parent permits continuation only with the same provider configuration, account,
+and requested model. Each turn freezes bounded text context in its receipt and
+journal. Restart reads these records without repeating requests. There is no
+workspace grant or tool dispatch in conversation mode. Responses remain unverified.
+
+Use `--provider fixture --allow-code` for deterministic offline chat. The fixture
+provider cannot execute code tasks. It is explicit host configuration, never an
+automatic fallback when account access fails.

@@ -588,3 +588,24 @@ async fn shutdown_requires_authentication_and_a_supported_command_version() -> T
     service.shutdown().await;
     Ok(())
 }
+
+#[tokio::test]
+async fn conversation_capability_requires_authentication_and_advertises_the_contract() -> TestResult
+{
+    let root = Root::new()?;
+    let service = Service::open(root.config()).await?;
+    let path = service.publish("http://127.0.0.1:1/".into()).await?;
+    let token = fishnet_service::read_connection(&path)?.token;
+    let app = fishnet_service::http::router(service.clone());
+    assert_eq!(
+        request(app.clone(), "GET", "/v1/capabilities", None, Value::Null)
+            .await?
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    let (status, body) = request(app, "GET", "/v1/capabilities", Some(&token), Value::Null).await?;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.get("data"), Some(&json!(["conversation-v1"])));
+    service.shutdown().await;
+    Ok(())
+}

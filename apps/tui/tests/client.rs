@@ -154,6 +154,7 @@ fn pending() -> TaskView {
     view.phase = Phase::AwaitingApproval;
     view.run = None;
     view.approval = Some(ApprovalView {
+        conversation: false,
         revision: 7,
         root: "/workspace".into(),
         objective: "Improve behavior".into(),
