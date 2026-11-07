@@ -26,6 +26,14 @@ impl std::fmt::Debug for Client {
     }
 }
 impl Client {
+    /// Ask the authenticated host to stop and cancel active work.
+    ///
+    /// # Errors
+    /// Returns connection, authorization, or protocol errors. No command is retried.
+    pub async fn shutdown(&self) -> Result<()> {
+        self.post("v1/shutdown", ()).await
+    }
+
     /// # Errors
     /// Rejects unsafe connection files, insecure endpoints, and HTTP initialization errors.
     pub fn connect(path: &Path) -> Result<Self> {

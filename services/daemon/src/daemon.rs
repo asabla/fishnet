@@ -112,7 +112,11 @@ pub async fn serve(listener: TcpListener, service: Service, shutdown: Cancellati
     let app = crate::http::router(service.clone());
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {
-            shutdown.cancelled().await;
+            let requested = service.shutdown_signal();
+            tokio::select! {
+                () = shutdown.cancelled() => (),
+                () = requested.cancelled() => (),
+            }
             service.shutdown().await;
         })
         .await

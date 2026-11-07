@@ -1,4 +1,6 @@
+mod draft;
 mod execution;
+pub mod local;
 mod store;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -68,6 +70,7 @@ struct Inner {
     state: Mutex<State>,
     slots: Arc<Semaphore>,
     commands: Arc<Semaphore>,
+    stop: Cancellation,
 }
 #[derive(Clone)]
 pub struct Service {
@@ -138,6 +141,7 @@ impl Service {
                 }),
                 slots: Arc::new(Semaphore::new(4)),
                 commands: Arc::new(Semaphore::new(16)),
+                stop: Cancellation::default(),
             }),
         })
     }
@@ -243,6 +247,21 @@ impl Service {
         &self,
         request: &TaskRequest,
     ) -> Result<Option<fishnet_core::workspace::TaskFile>> {
+        if let Some((model, account)) = request.model_account() {
+            if !self.inner.config.allow_code {
+                return Err(ApiError::new(
+                    "forbidden",
+                    "service coding is disabled; stop the service, then run fishnet again or start fishnet serve --allow-code",
+                ));
+            }
+            validate_key(account)?;
+            if model
+                .as_ref()
+                .is_some_and(|m| m.is_empty() || m.len() > 128)
+            {
+                return Err(ApiError::invalid("invalid model name"));
+            }
+        }
         match request {
             TaskRequest::Fixture {
                 scenario,
@@ -255,24 +274,19 @@ impl Service {
                 }
                 Ok(None)
             }
-            TaskRequest::Code {
-                task_path,
-                model,
-                account,
+            TaskRequest::Rust {
+                objective, files, ..
             } => {
-                if !self.inner.config.allow_code {
-                    return Err(ApiError::new(
-                        "forbidden",
-                        "service coding is disabled; restart the host with --allow-code",
-                    ));
-                }
-                validate_key(account)?;
-                if model
-                    .as_ref()
-                    .is_some_and(|m| m.is_empty() || m.len() > 128)
-                {
-                    return Err(ApiError::invalid("invalid model name"));
-                }
+                let root = self.inner.config.root.clone();
+                let objective = objective.clone();
+                let files = files.clone();
+                tokio::task::spawn_blocking(move || {
+                    draft::prepare(root, objective, files).map(Some)
+                })
+                .await
+                .map_err(|_| ApiError::storage())?
+            }
+            TaskRequest::Code { task_path, .. } => {
                 let root = self.inner.config.root.clone();
                 let path = PathBuf::from(task_path);
                 if path.is_absolute()
@@ -646,6 +660,12 @@ impl Service {
             Phase::Finished
         } else if cancel.is_cancelled() {
             Phase::Cancelled
+        } else if result
+            .as_ref()
+            .is_err_and(|error| matches!(error.code.as_str(), "invalid_request" | "provider_error"))
+        {
+            // Provider initialization failed before the core could start a model/tool loop.
+            Phase::Failed
         } else {
             Phase::Interrupted
         };
@@ -664,6 +684,12 @@ impl Service {
         state.tasks.get_mut(&id).ok_or_else(not_found)?.receipt = receipt;
         drop(state);
         Ok(())
+    }
+
+    /// Return the explicit host shutdown signal. Client detachment does not set it.
+    #[must_use]
+    pub fn shutdown_signal(&self) -> Cancellation {
+        self.inner.stop.clone()
     }
 
     /// Cancel active tasks and wait for their owned cleanup before closing the service.
@@ -690,14 +716,15 @@ fn view(receipt: Receipt, record: Option<&fishnet_core::RunRecord>) -> TaskView 
     let approval = if receipt.phase == Phase::AwaitingApproval {
         receipt.prepared.as_ref().map(|task| ApprovalView {
             account: match (&receipt.provider, &receipt.submission.task) {
-                (ProviderAccess::Chatgpt { .. }, TaskRequest::Code { account, .. }) => {
-                    account.clone()
-                }
+                (
+                    ProviderAccess::Chatgpt { .. },
+                    TaskRequest::Code { account, .. } | TaskRequest::Rust { account, .. },
+                ) => account.clone(),
                 (ProviderAccess::ApiKey { .. }, _) => "host API-key profile".into(),
                 (_, TaskRequest::Fixture { .. }) => String::new(),
             },
             model: match &receipt.submission.task {
-                TaskRequest::Code { model, .. } => {
+                TaskRequest::Code { model, .. } | TaskRequest::Rust { model, .. } => {
                     model.clone().or_else(|| match &receipt.provider {
                         ProviderAccess::ApiKey { default_model, .. } => default_model.clone(),
                         ProviderAccess::Chatgpt { .. } => None,

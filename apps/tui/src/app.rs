@@ -452,6 +452,7 @@ pub const fn status(phase: Phase, state: Option<TaskState>, incomplete: bool) ->
             Phase::Executing => "RUNNING",
             Phase::Rejected => "REJECTED",
             Phase::Cancelled => "CANCELLED",
+            Phase::Failed => "FAILED",
             Phase::Finished | Phase::Interrupted => "UNKNOWN / INTERRUPTED",
         },
     }

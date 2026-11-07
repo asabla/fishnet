@@ -1,5 +1,5 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -215,6 +215,29 @@ fn private_directory(path: &Path) -> Result<()> {
             .map_err(|_| ApiError::storage())?;
     }
     check_path(path, true)
+}
+
+pub(super) fn launch_log(directory: &Path) -> Result<File> {
+    for ancestor in directory.ancestors() {
+        if fs::symlink_metadata(ancestor).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(ApiError::new(
+                "unsafe_credentials",
+                "service path must not contain symlinks",
+            ));
+        }
+    }
+    private_directory(directory)?;
+    let path = directory.join("daemon.log");
+    if fs::symlink_metadata(&path).is_ok_and(|metadata| metadata.len() > 65_536) {
+        check_path(&path, false)?;
+        fs::rename(&path, directory.join("daemon.previous.log"))
+            .map_err(|_| ApiError::storage())?;
+    }
+    let mut log = create_private(&path, false)?;
+    // Each startup writes only a banner or an error, never task or account content.
+    log.seek(std::io::SeekFrom::End(0))
+        .map_err(|_| ApiError::storage())?;
+    Ok(log)
 }
 
 fn create_private(path: &Path, exclusive: bool) -> Result<File> {

@@ -35,6 +35,7 @@ pub fn router(service: Service) -> Router {
     };
     Router::new()
         .route("/v1/health", get(health))
+        .route("/v1/shutdown", post(shutdown))
         .route("/v1/tasks", get(list).post(submit))
         .route("/v1/tasks/{id}", get(snapshot))
         .route("/v1/tasks/{id}/events", get(events))
@@ -89,6 +90,14 @@ fn version<T>(request: Envelope<T>) -> Result<T> {
 }
 async fn health() -> Json<Envelope<&'static str>> {
     Json(Envelope::new("ready"))
+}
+async fn shutdown(
+    State(state): State<HttpState>,
+    Json(request): Json<Envelope<()>>,
+) -> Result<Json<Envelope<()>>> {
+    version(request)?;
+    state.service.shutdown_signal().cancel();
+    Ok(Json(Envelope::new(())))
 }
 async fn list(
     State(state): State<HttpState>,

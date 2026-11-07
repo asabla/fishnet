@@ -42,6 +42,23 @@ pub enum TaskRequest {
         model: Option<String>,
         account: String,
     },
+    Rust {
+        objective: String,
+        files: Vec<String>,
+        model: Option<String>,
+        account: String,
+    },
+}
+impl TaskRequest {
+    #[must_use]
+    pub fn model_account(&self) -> Option<(&Option<String>, &str)> {
+        match self {
+            Self::Code { model, account, .. } | Self::Rust { model, account, .. } => {
+                Some((model, account))
+            }
+            Self::Fixture { .. } => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -51,6 +68,7 @@ pub enum Phase {
     Accepted,
     Executing,
     Finished,
+    Failed,
     Interrupted,
     Rejected,
     Cancelled,
@@ -60,7 +78,7 @@ impl Phase {
     pub const fn terminal(self) -> bool {
         matches!(
             self,
-            Self::Finished | Self::Interrupted | Self::Rejected | Self::Cancelled
+            Self::Finished | Self::Failed | Self::Interrupted | Self::Rejected | Self::Cancelled
         )
     }
 }

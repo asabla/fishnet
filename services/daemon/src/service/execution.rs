@@ -39,7 +39,7 @@ pub(super) async fn execute(
             .await
             .map_err(|_| ApiError::storage())?;
         }
-        TaskRequest::Code { model, account, .. } => {
+        TaskRequest::Code { model, account, .. } | TaskRequest::Rust { model, account, .. } => {
             let task = receipt.prepared.clone().ok_or_else(ApiError::storage)?;
             let provider =
                 provider(&receipt.provider, model.clone(), account, &cancellation).await?;

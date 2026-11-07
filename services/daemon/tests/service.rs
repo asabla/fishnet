@@ -476,7 +476,7 @@ async fn approval_handoff_uses_the_frozen_contract_and_is_not_executed_twice() -
     let done = terminal(&service, &view.task_id).await?;
     assert_eq!(done.approval_decision, Some(true));
     assert!(done.approval_wait_ms.is_some());
-    assert_eq!(done.phase, Phase::Interrupted);
+    assert_eq!(done.phase, Phase::Failed);
     assert!(done.run.is_none());
     assert!(
         done.message
@@ -484,6 +484,107 @@ async fn approval_handoff_uses_the_frozen_contract_and_is_not_executed_twice() -
             .contains("API key is unavailable")
     );
     assert_eq!(fs::read_to_string(root.0.join("work.txt"))?, "original");
+    service.shutdown().await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn guided_rust_tasks_freeze_host_checks_and_require_approval() -> TestResult {
+    let root = Root::new()?;
+    fs::write(root.0.join("Cargo.toml"), "[workspace]\n")?;
+    fs::write(root.0.join("work.rs"), "original")?;
+    fs::write(root.0.join("AGENTS.md"), "protected instructions")?;
+    let config = Config {
+        allow_code: true,
+        ..root.config()
+    };
+    let service = Service::open(config.clone()).await?;
+    let draft = |id: &str, files: Vec<String>| Submission {
+        request_id: id.into(),
+        task: TaskRequest::Rust {
+            objective: "Update work.rs and test the result".into(),
+            files,
+            model: None,
+            account: "default".into(),
+        },
+    };
+    for (id, files) in [
+        ("escape", vec!["../outside".into()]),
+        ("instructions", vec!["AGENTS.md".into()]),
+    ] {
+        assert!(service.submit(draft(id, files)).await.is_err());
+    }
+    let pending = service.submit(draft("new", vec!["work.rs".into()])).await?;
+    assert_eq!(pending.phase, Phase::AwaitingApproval);
+    let grant = pending.approval.ok_or("no grant")?;
+    assert_eq!(grant.allowed_writes, vec!["work.rs"]);
+    assert_eq!(grant.required_changes, vec!["work.rs"]);
+    assert_eq!(grant.checks, vec!["format", "test", "lint", "docs"]);
+    assert_eq!(grant.commands.len(), 4);
+    assert!(
+        grant
+            .commands
+            .iter()
+            .all(|command| command.program.is_absolute())
+    );
+    assert!(!root.0.join("runs").exists());
+    service.shutdown().await;
+    drop(service);
+    let restarted = Service::open(config).await?;
+    let restored = restarted.snapshot(&pending.task_id).await?;
+    assert_eq!(
+        restored.approval.ok_or("lost grant")?.fingerprint,
+        grant.fingerprint
+    );
+    restarted
+        .approve(
+            &pending.task_id,
+            Approval {
+                expected_revision: 1,
+                approve: false,
+            },
+        )
+        .await?;
+    assert!(!root.0.join("runs").exists());
+    restarted.shutdown().await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn shutdown_requires_authentication_and_a_supported_command_version() -> TestResult {
+    let root = Root::new()?;
+    let service = Service::open(root.config()).await?;
+    let path = service.publish("http://127.0.0.1:1/".into()).await?;
+    let token = fishnet_service::read_connection(&path)?.token;
+    let app = fishnet_service::http::router(service.clone());
+    let body = json!({"schema_version":1,"data":null});
+    assert_eq!(
+        request(app.clone(), "POST", "/v1/shutdown", None, body.clone())
+            .await?
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert!(!service.shutdown_signal().is_cancelled());
+    assert_eq!(
+        request(
+            app.clone(),
+            "POST",
+            "/v1/shutdown",
+            Some(&token),
+            json!({"schema_version":99,"data":null})
+        )
+        .await?
+        .0,
+        StatusCode::BAD_REQUEST
+    );
+    assert!(!service.shutdown_signal().is_cancelled());
+    assert_eq!(
+        request(app, "POST", "/v1/shutdown", Some(&token), body)
+            .await?
+            .0,
+        StatusCode::OK
+    );
+    assert!(service.shutdown_signal().is_cancelled());
     service.shutdown().await;
     Ok(())
 }

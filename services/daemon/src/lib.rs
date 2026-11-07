@@ -3,9 +3,11 @@ pub mod cli;
 pub mod client;
 pub mod contract;
 pub mod daemon;
+pub mod display;
 pub mod http;
 mod service;
 
+pub use service::local;
 pub use service::{Config, ProviderAccess, Service};
 pub use service::{Connection, read_connection};
 
