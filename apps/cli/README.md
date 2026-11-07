@@ -32,7 +32,7 @@ a provider or reconstruct state by executing tools.
 | `--max-provider-calls` | 16 | 1..=32 |
 
 These execution options apply to `run`. `inspect` accepts only its run ID and
-`--store`. IDs cannot contain paths. A closed stdout pipe does not stop journal
+`--store` and `--summary`. IDs cannot contain paths. A closed stdout pipe does not stop journal
 completion. A blocked output write can delay cooperative cancellation.
 
 | Exit code | Meaning |
@@ -45,3 +45,11 @@ completion. A blocked output write can delay cooperative cancellation.
 The inspected outcome can be failed or cancelled even when inspection exits 0.
 A process killed without a terminal record remains incomplete, with an unknown
 outcome. Inspection reports that state and does not retry it.
+
+## Coding and account commands
+
+See [the development workflow](../../docs/using-fishnet.md) for `auth`, `models`,
+and `code`. Coding requires an explicit task file and opt-in provider access.
+Default fixture runs and tests stay offline. `inspect RUN_ID --summary` omits
+full events and keeps the outcome, pending operations, and diagnostic counts.
+Inspection does not refresh credentials or make a network request.

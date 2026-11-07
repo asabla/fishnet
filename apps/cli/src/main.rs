@@ -19,7 +19,7 @@ Usage:
                [--endpoint URL] [--key-env NAME]
   fishnet run [--scenario NAME] [--store DIR] [--deadline-ms N]
               [--step-delay-ms N] [--max-output-bytes N] [--max-provider-calls N]
-  fishnet inspect RUN_ID [--store DIR]
+  fishnet inspect RUN_ID [--store DIR] [--summary]
 
 Scenarios: success, unverified, check-failure, repeated-invalid, negative, provider-failure
 Default store: .fishnet/runs. Output: JSON events for run; JSON record for inspect.
