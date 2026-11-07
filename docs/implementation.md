@@ -1,6 +1,6 @@
 # Implementation plan
 
-M1 through M3 are complete on the qualified local host. M4 passed its initial technical acceptance, but its usability revision is active after user rejection of the interface. M5 through M7 are pending. Evidence is current as of 2026-11-07.
+M1 through M3 are complete on the qualified local host. M4 passed its initial technical acceptance, but its usability revision is active after user rejection of the interface. M5 through M7 are pending. Evidence is current as of 2026-11-08.
 
 ## M1: Deterministic local vertical slice
 
@@ -43,7 +43,9 @@ Status: active usability revision. The initial service-client acceptance and an 
 
 The conversation revision provides a multiline prompt, slash commands, typed transcript entries, and temporary access/review panels. The OpenCode-inspired visual pass adds a centred start screen, limited content width, a model row, shaded tool blocks, and small-screen task controls. The local 95-test quality gate, Browser review of actual renderer cells, actual terminal-byte colour tests, and an isolated real PTY fixture/reject/restart flow passed. `fishnet run` now opens the interface; the standalone JSON utility is `fishnet fixture`. `--color auto|always|never` controls terminal colour policy and monochrome contrast.
 
-Persistent conversational turns, transient token display, rich Markdown, inline diffs, and native terminal appearance remain unfinished or unqualified. See [M4 evidence](m4-evidence.md) and [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md).
+The subsequent 105-test quality gate and isolated PTY conversation/restart check passed. The message workflow now uses bounded persistent conversations with one provider consent per conversation. Plain messages bypass file selection; `/code` keeps explicit code grants. F2 opens full consent details. Conversation mode cannot read files or run commands and cannot infer verified success. See [ADR-0010](decisions/0010-conversation-consent-and-history.md).
+
+Transient token display, rich Markdown, inline diffs, and revised native terminal appearance remain unfinished or unqualified. See [M4 evidence](m4-evidence.md) and [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md).
 
 Build the TUI as a client of M3. Render task state, streamed output, approvals, cancellation, and bounded diagnostic summaries. Keep business logic in the service.
 

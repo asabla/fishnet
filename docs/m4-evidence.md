@@ -427,3 +427,59 @@ corrected launch results and terminal captures, full-check logs, and isolated
 fixture receipts. These verify routing, terminal encoding, and lifecycle. The
 user's specific native terminal appearance still requires their retest; no
 native screenshot is claimed. M4 remains active and M5 is pending.
+
+## Conversation workflow correction (2026-11-08)
+
+The user's native screenshots showed the current colour renderer. They also
+showed that a plain `test` message still entered file selection and the raw
+coding grant. The earlier launch diagnosis did not explain that workflow.
+This correction adds a service-backed conversation path; it does not treat a
+prompt or a renderer preview as proof of conversation support.
+
+Plain Enter now submits a message. The first turn presents concise provider
+consent. Later turns retain the alternating user and assistant text and reuse
+that consent within the same provider, account, and requested model scope.
+Chat has no workspace or tool access. `/code` retains the explicit coding path.
+F2 expands full grant details. Both compact and expanded views resolve the same
+host revision. A capability check prevents chat submission to an older host.
+
+Checks run on the local macOS ARM64 host:
+
+- `./scripts/check.sh`: formatting, 105 passing default tests, strict all-target
+  Clippy, and rustdoc passed offline. One backend helper is marked ignored in
+  the suite and is invoked in four isolated environments by its parent test.
+- `cargo build --workspace --offline --locked` passed.
+- `make install` passed offline and replaced `/Users/asabla/.cargo/bin/fishnet`. The installed release binary passed the same isolated PTY flow. Its `tui --help` describes message entry and `/code`. Installed-binary evidence is retained under `.fishnet/m4-chat/installed/`.
+- The tests cover bounded context and role order, no-tool enforcement,
+  unverified outcomes, cancellation, initial consent, rejected and cancelled
+  parent turns, changed account/model/provider scope, idempotency, saved history,
+  journal inspection without replay, authenticated capability discovery, prompt
+  retention, transcript reconstruction, and compact consent controls after resize.
+- The direct Responses adapter test asserts explicit role history, empty tools,
+  `tool_choice=none`, and `store=false`. It uses mock transport.
+- An isolated real PTY test used the built CLI and an explicit offline fixture
+  host. At 80×24, it submitted a message, approved initial consent with Enter,
+  received a response, and sent a second message without repeated consent or
+  file selection. After stopping and reopening that host, a 40×15 client attached
+  to the second turn and continued the conversation. All three outcomes were
+  unverified, with zero tools and processes. The disposable source was unchanged,
+  original journal hashes were unchanged on restart, and terminal settings were
+  restored on normal detach. All owned fixture hosts were stopped.
+- Browser inspection of actual TestBackend cells covered compact consent at
+  80×24 and 40×15. The narrow view retains controls and a scroll range. These are
+  synthetic renderer previews, not native terminal screenshots.
+
+Local PTY evidence is retained under `.fishnet/m4-chat/`: `pty_flow.py`,
+`pty-result.json`, `conversation-80x24.pty`, and `reattach-40x15.pty`.
+The first PTY attempt used a continuous-byte text matcher, which did not match
+Crossterm's incremental writes. The corrected check reads the durable service
+outcome; the original attempt remains retained. Renderer exports and final
+quality output are retained separately under `.fishnet/m4-chat/layouts/` and
+`.fishnet/chat-check-final.log`.
+
+No live account request was made for this correction. The offline flow does not
+establish live ChatGPT conversation compatibility, external provider support,
+or native font and terminal appearance. Replies appear after completion;
+transient text, rich Markdown, inline diffs, and dynamic coding permissions remain
+M4 work. No M5 work was added. Conversation records remain session data; no
+memory, skill, or policy is generated. See [ADR-0010](decisions/0010-conversation-consent-and-history.md).
