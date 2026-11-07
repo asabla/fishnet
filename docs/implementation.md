@@ -1,6 +1,6 @@
 # Implementation plan
 
-M1 through M4 are complete as of 2026-11-07 on the qualified local host. M5 through M7 are pending. Each stage produces a usable increment and linked acceptance evidence.
+M1 through M3 are complete on the qualified local host. M4 passed its initial technical acceptance, but its usability revision is active after user rejection of the interface. M5 through M7 are pending. Evidence is current as of 2026-11-07.
 
 ## M1: Deterministic local vertical slice
 
@@ -39,7 +39,7 @@ Acceptance: a client disconnect does not cancel accepted work; reconnect returns
 
 ## M4: TUI
 
-Status: complete on the local macOS ARM64 host. The terminal client shares M3 task state and supports approvals, cancellation, detach/reconnect, bounded output, and explicit outcomes. The usability revision adds one-command startup, guided Rust tasks, readable CLI output, responsive layouts, and command acknowledgement at exit. Offline screen/input cases and real pseudo-terminal checks passed. An explicitly approved disposable ChatGPT coding task also passed four independent host checks through the installed TUI; restart preserved its verified outcome without replay. See [M4 evidence](m4-evidence.md) for the remaining qualification limits.
+Status: active usability revision. The initial service-client acceptance and an approved disposable live coding task passed. The user rejected the dashboard interaction and rendering. The first conversation revision now provides a persistent multiline prompt, slash commands, compact typed transcript entries, and temporary access/review panels. Offline renderer/input tests, Browser review of actual renderer cells, and an isolated real PTY fixture/reject/restart flow passed. Persistent conversational turns, transient token display, rich Markdown, inline diffs, and native terminal appearance remain unfinished or unqualified. See [M4 evidence](m4-evidence.md) and [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md).
 
 Build the TUI as a client of M3. Render task state, streamed output, approvals, cancellation, and bounded diagnostic summaries. Keep business logic in the service.
 

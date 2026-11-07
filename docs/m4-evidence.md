@@ -1,11 +1,13 @@
 # M4 acceptance evidence
 
-Status: complete on the local macOS ARM64 host, 2026-11-07. M3 was committed and
-verified before the terminal client was implemented. M5 remains pending.
+Status: active usability revision, 2026-11-07. Initial technical acceptance on the
+local macOS ARM64 host is retained below. It did not establish a suitable user
+interface. The latest conversation revision is recorded at the end. M5 remains pending.
 
 The sections before "Usability revision after user review" describe the initial
 M4 build and remain historical evidence. Use the revision below and current usage
-guides for current behavior and qualification limits. Technical milestone
+guides for current behavior and qualification limits. The conversation revision
+at the end replaces the earlier letter shortcuts and dashboard. Technical milestone
 acceptance did not establish product readiness.
 
 ## Delivered behavior
@@ -246,3 +248,76 @@ headless screen rows are verified; actual rendering in that app, other terminal
 emulators, accessibility certification, Linux/Windows, and hosted CI are not.
 Commands still use host OS permissions. Guided Rust checks establish their
 listed criteria, not every behavioral claim about an objective.
+
+## Conversation revision after screenshot review
+
+The user rejected the dashboard and requested actual Codex and OpenCode TUI
+screenshots. Browser inspection of the official reference pages preceded this
+revision. [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md) records
+the decision and its limits. This is the first correction, not product parity.
+
+Delivered:
+
+- Ordinary letters enter text in a persistent bottom prompt. The prompt accepts
+  multiline paste and cursor edits. Slash commands replace global letter
+  shortcuts. A command menu supports unique-prefix completion. Startup leaves
+  saved tasks behind /tasks instead of silently opening one.
+- One transcript column separates user intent, model text, tool activity,
+  independent checks, errors, and the authoritative outcome. Tool/check results
+  join their operation entries. Provider request noise remains in /details.
+  Replayed sequences do not duplicate entries. Unsent text survives selection
+  and late acknowledgements. The model message cannot establish success.
+- File access follows intent entry. The frozen host grant and its revision are
+  still reviewed before execution. Full-width temporary panels replace floating
+  forms. Small-screen review controls remain visible. The journal and execution
+  policy are unchanged. No dependency was added.
+
+Checks actually run on the local macOS ARM64 host:
+
+- `./scripts/check.sh` passed with **90 offline tests**, formatting, strict
+  workspace/all-target Clippy, and strict rustdoc. `cargo build --workspace
+  --offline --locked` also passed. Default tests made no live provider request.
+- Ten retained text snapshots cover the conversation, welcome screen, file
+  scope, grant start/end, help end, multiline prompt, and command menu. Tests
+  cover Unicode edits, bounded/sanitized paste, exact-column cursor wrapping,
+  draft retention, operation grouping, replay, task isolation, and explicit
+  terminal outcomes. The exact-column case first failed because the word
+  wrapper discarded the space used for the cursor. A visible caret fixes the
+  lost cursor, and the regression now passes.
+- Browser visual review used exported **actual TestBackend cell symbols and
+  styles**, including 80x24 conversation, 40x15 file access and command menu,
+  and 40x12 grant controls. The retained HTML and SVG preview use synthetic
+  layout content. They are renderer evidence, not native terminal screenshots.
+- An isolated real 80x24 PTY ran the new input flow against the Rust service.
+  Ordinary letters did not detach or invoke tools. /fixture reached verified
+  success for task
+  `226f824b0580df3c8d438e30eb4b38d782251a7d4ec813a4d73cd76ff68d9b51`.
+  Its independent check passed; it retained two scripted model requests and one
+  logical tool call. These counts are diagnostics, not the success criterion.
+- Typed intent and a named file prepared a complete Rust grant. Rejection of
+  task `7e5844b858860b9f5fc3a6410e7ee1df6b87e24a697eefbdacdb5f88ef206f4a`
+  created no coding run. The disposable source file remained unchanged. The
+  service used a fresh empty account directory. No real provider was contacted.
+- /quit restored terminal settings. After service restart, reattachment in a
+  40x15 PTY displayed the same verified outcome and opened /details. Run state,
+  statistics, and journal SHA-256 were unchanged. No tool was replayed. Both
+  PTYs restored their previous terminal settings; test hosts were stopped.
+
+The PTY test setup first rejected a noncanonical temporary-directory path. Its
+runner also first waited for client exit without draining output and read a
+stale connection file during restart. The corrected runner resolves its root,
+continuously drains terminal output, and waits for new connection data. The
+successful result above comes from that corrected run. These setup failures do
+not establish product failures or substitute for the successful assertions.
+
+Local evidence is under `.fishnet/m4-conversation`: quality/build logs, the PTY
+runner and receipts, PTY transcripts, and renderer previews. Connection files
+and credentials were not copied there. No memory or skill was generated.
+
+M4 remains active. The service still accepts separate tasks; prior text is not
+conversation context for a new prompt. Persistent conversational turns,
+transient text streaming, rich Markdown, and inline diff presentation are next.
+Native terminal appearance, other terminal emulators, accessibility, other OSs,
+and hosted CI remain unqualified. The earlier approved live coding task used
+the previous interface and is not new live evidence for this revision. M5 has
+not started.

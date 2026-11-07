@@ -1,6 +1,6 @@
 # Requirements
 
-Status: recorded user requirements and derived constraints. M1 through M4 are implemented; see [implementation status](implementation.md) and its acceptance evidence. Later product capabilities remain pending.
+Status: recorded user requirements and derived constraints. M1 through M3 are complete; M4 has an active usability revision after its initial technical acceptance. See [implementation status](implementation.md) and its evidence. Later product capabilities remain pending.
 
 ## Fixed requirements
 
