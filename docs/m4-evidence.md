@@ -198,13 +198,48 @@ restored unchanged. The full 81-test gate then passed. The initial failed export
 original reruns, gated trials, and expected mutation failure remain separate
 verification records; they were not removed from the evidence.
 
-### Qualification boundary
+### Approved live coding qualification
 
-A live synthetic coding task was prepared as
-`5e37a8a7bace07e02096e70909e56f83df81a39ae56afc82013c109ecc2a710b`,
-with model `gpt-6.1-sol`, only `src/lib.rs` writable, and four fixed independent
-quality checks. It remains pending explicit account-use approval. No new live
-model success is claimed here. The earlier M2 live result is separate evidence.
+After explicit user approval on 2026-11-07, task
+`5e37a8a7bace07e02096e70909e56f83df81a39ae56afc82013c109ecc2a710b`
+completed through the installed TUI using the ChatGPT account and model
+`gpt-6.1-sol`. The frozen grant fingerprint remained
+`bc63bcd55665a22fa493c9afd67d58aba5d3fb838f58ec3d5ba91b8ed51b057e`.
+Only the disposable project's `src/lib.rs` was writable. No fishnet repository
+file was present in its readable root. Credentials were excluded from task
+content and retained evidence.
+
+The TUI approved revision 1. It detached while the task was running, and a
+separate CLI confirmed that execution remained service-owned. Reattachment
+showed the durable result and all independent checks. The function changed from
+returning zero to `left + right`. Source inventory and SHA-256 comparisons showed
+that only `src/lib.rs` changed; the existing addition test, Cargo manifest, lock,
+and toolchain file stayed unchanged.
+
+The model used read_file, replace_text, and the four granted Cargo commands.
+Its only file-read tool call read `src/lib.rs`. After its final response at
+sequence 28, the host independently ran fmt, tests, Clippy with warnings denied,
+and documentation checks. They finished at sequences 30, 32, 34, and 36, each
+with exit code zero, passed status, unchanged protected files, and no output
+truncation. The existing `adds_two_numbers` behavioral test passed. The terminal
+outcome at sequence 37 was verified success, based on these checks and the
+required source change.
+
+The record retained 7 model requests, 6 logical tool calls, and 8 process
+attempts: four model-selected commands and four independent host checks. These
+counts describe this trial; they are not the success criterion. Service restart
+preserved the outcome, all 37 events, operation statistics, and journal SHA-256.
+No provider or tool operation repeated. The validation TUI and service were
+stopped after inspection.
+
+Local evidence under `.fishnet/m4-usability` includes `live-record.json`,
+`live-audit.json`, before/after restart views, baseline source hashes, the final
+receipt and source, the JSONL journal, and three PTY transcripts. The earlier M2
+self-development result remains separate evidence. This live trial qualifies
+the initial interactive coding workflow for this project shape and account; it
+does not qualify arbitrary coding tasks or providers.
+
+### Qualification boundary
 
 Native Terminal access was blocked by the computer-use tool. PTY behavior and
 headless screen rows are verified; actual rendering in that app, other terminal

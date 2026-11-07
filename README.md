@@ -58,6 +58,8 @@ checks established technical behavior but did not establish a usable normal
 workflow. The subsequent usability revision covers the single-command entry,
 guided task preparation, responsive layouts, and command acknowledgement at
 exit. See [M4 evidence](docs/m4-evidence.md) for current checks and limits.
+An approved disposable Rust task also completed through the installed TUI and
+passed all four independent host checks.
 Fishnet's earlier ChatGPT self-development task is recorded in [M2 evidence](docs/m2-evidence.md).
 
 Approved commands use host OS permissions. There is no OS sandbox, plugin host,
