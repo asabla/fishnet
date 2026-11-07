@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "fishnet-test-only",
+      "use": "sig",
+      "alg": "RS256",
+      "n": "i2hqQ7962P5quJ1eIzp2J1UDJycUEEfKpHilto5k2_k2Q0G1AKNTklZLbB7thQSPe53HDa3SBlPskSJwva_pN5-iOho7VPH9KuDatIrEASE79bm9V_gtWrIXdzhHehmn3N5uvARJGoesAZi3Hj1jr-EVYGmFlC4oM70nB6mTmASjs2f3mZ1VtGUc7hQvynKNaoo1LcwiH2pPtd9wKhrgR2tCSUR6Sc7ldsN1_RWeLvpTAu27Cxe3CtFbDiYq_u8CpfHsmpihYSMudPGe9K0MBxVEkJHHxuWcOphkQa7NEpt5zn3NuEiy2epsVxZ2yScqZCZdNGtuQ75mkqmcCDSk3Q",
+      "e": "AQAB"
+    }
+  ]
+}
