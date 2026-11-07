@@ -321,3 +321,56 @@ Native terminal appearance, other terminal emulators, accessibility, other OSs,
 and hosted CI remain unqualified. The earlier approved live coding task used
 the previous interface and is not new live evidence for this revision. M5 has
 not started.
+
+## OpenCode-inspired visual refinement
+
+Baseline: the previous revision was committed as `b2ef1d3` and `412c947`.
+The working tree was clean before this pass. Browser review used the official
+[OpenCode terminal page](https://dev.opencode.ai/terminal) as the visual reference.
+
+The start screen now centres an original fishnet wordmark above the composer.
+The composer has a narrow blue edge, a request-model row, and a small project
+and shortcut row. Its width is limited to 80 cells on the start screen. Active
+tasks use a column limited to 100 cells and keep the composer at the bottom.
+Tool blocks have quieter backgrounds, human-readable action titles, and fixed
+text gutters that remain correct when content wraps or scrolls. Temporary panels
+use the same surface. The narrow task picker retains its navigation controls.
+
+The model row shows the configured request preference or "host default". It does
+not claim a provider or observed model when neither is known. Routine connection
+messages remain available in details. Attention notices and uncertain-command
+counts stay visible across reconnect. No provider, policy, grant, execution, or
+journal contract changed. No dependency or lint exception was added.
+
+Checks actually run:
+
+- `./scripts/check.sh` passed with **93 offline tests**, formatting, strict
+  workspace/all-target Clippy, and strict rustdoc. `cargo build --workspace
+  --offline --locked` passed.
+- Fifteen retained row snapshots cover the start, active session, multiline
+  prompt, command menu, file scope, grant review, help, and task picker. New
+  assertions cover narrow task controls, request-model display, reconnect
+  warnings, and cleared panel backgrounds. Renderer exports now use snapshot
+  names so concurrent tests cannot overwrite another scene's preview.
+- Browser colour review covered the start screen, 120x30 and 80x24 active
+  sessions, retained SVG images, and the 40x15 task picker. The images contain
+  synthetic layout data and use actual TestBackend symbols and styles.
+- The isolated real PTY flow passed at 80x24 and reattached at 40x15. Fixture
+  `f097c3ae6567ea4fd0bc9ac05789110986354977763040e8c312c3740520a4bc`
+  reached verified success after its independent check. Rejected coding grant
+  `7e007f211fc3832f28f39d6e15eccd19a5662dbe785381000ea8dc1d23807d7c`
+  started no coding run and left the disposable source unchanged. No real
+  provider was contacted. Detach restored terminal settings. Restart preserved
+  run state, statistics, and the journal SHA-256 without operation replay.
+
+`make install` passed and replaced the installed command. The installed
+`fishnet tui --help` also returned successfully without starting a service.
+
+Local evidence is under `.fishnet/m4-opencode`. It includes check/build logs,
+the isolated PTY driver and result, terminal output, named HTML exports, and
+SVG images. Preview and fixture services were stopped after review.
+
+This remains M4 work. Conversational turns, transient streaming, rich Markdown,
+and inline diffs are still pending. Browser cell previews and PTYs do not
+establish native terminal appearance, accessibility, other OS support, or hosted
+CI qualification. The earlier live coding trial remains separate evidence.

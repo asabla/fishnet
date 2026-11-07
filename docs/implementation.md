@@ -39,7 +39,11 @@ Acceptance: a client disconnect does not cancel accepted work; reconnect returns
 
 ## M4: TUI
 
-Status: active usability revision. The initial service-client acceptance and an approved disposable live coding task passed. The user rejected the dashboard interaction and rendering. The first conversation revision now provides a persistent multiline prompt, slash commands, compact typed transcript entries, and temporary access/review panels. Offline renderer/input tests, Browser review of actual renderer cells, and an isolated real PTY fixture/reject/restart flow passed. Persistent conversational turns, transient token display, rich Markdown, inline diffs, and native terminal appearance remain unfinished or unqualified. See [M4 evidence](m4-evidence.md) and [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md).
+Status: active usability revision. The initial service-client acceptance and an approved disposable live coding task passed. The user rejected the dashboard interaction and rendering.
+
+The conversation revision provides a multiline prompt, slash commands, typed transcript entries, and temporary access/review panels. The OpenCode-inspired visual pass adds a centred start screen, limited content width, a model row, shaded tool blocks, and small-screen task controls. The local 93-test quality gate, Browser review of actual renderer cells, and an isolated real PTY fixture/reject/restart flow passed.
+
+Persistent conversational turns, transient token display, rich Markdown, inline diffs, and native terminal appearance remain unfinished or unqualified. See [M4 evidence](m4-evidence.md) and [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md).
 
 Build the TUI as a client of M3. Render task state, streamed output, approvals, cancellation, and bounded diagnostic summaries. Keep business logic in the service.
 
