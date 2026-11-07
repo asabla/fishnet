@@ -54,3 +54,12 @@ Linux CI is defined; its result must be reported separately.
 Keep the command/event types stable when adding an async provider or service.
 Split another crate only when a tested boundary needs it. Add an async runtime
 when M2 I/O requires it. No middleware runtime or provider is selected here.
+
+## Developer command entry point, 2026-11-07
+
+The user requested Make commands and discoverable help. Use a small Makefile
+with a help default and explicit `.PHONY` command targets. Keep
+`./scripts/check.sh` as the common quality command for local development and CI.
+Make wraps existing Cargo commands; it does not become a runtime dependency.
+Direct Cargo commands remain available. Verify the recipes with the host's GNU
+Make 3.81. No additional task runner is needed.

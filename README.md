@@ -5,6 +5,21 @@ adds direct model access, controlled repository edits, approved commands, and
 independent coding checks. The Rust core owns
 the loop, execution policy, task state, cancellation, and local diagnostics.
 
+## Development commands
+
+Run `make` or `make help` to see the available commands and examples.
+
+```sh
+make setup  # Fetch locked dependencies; network access can be required
+make build  # Build offline
+make run    # Run a deterministic offline fixture
+make check  # Run the complete quality checks
+```
+
+Use `make run ARGS="--scenario negative"` for another fixture, or
+`make cli ARGS="inspect YOUR_RUN_ID --summary"` to inspect a run.
+See [development policy](docs/development.md) for all targets.
+
 ## Run M1
 
 Use the pinned Rust toolchain. On a new machine, `cargo fetch --locked` populates
@@ -39,12 +54,12 @@ Press Ctrl-C during the delayed run to request cancellation. See
 ## Check the workspace
 
 ```sh
-./scripts/check.sh
+make check
 ```
 
-This runs formatting, offline tests, strict Clippy, and rustdoc with the pinned
-toolchain. See the [development policy](docs/development.md) for enforced rules
-and manual code review requirements.
+This calls `./scripts/check.sh` to run formatting, offline tests, strict Clippy,
+and rustdoc with the pinned toolchain. See the [development policy](docs/development.md)
+for enforced rules and manual code review requirements.
 
 ## Status and boundaries
 

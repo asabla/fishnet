@@ -10,13 +10,45 @@ Install the pinned toolchain and populate the dependency cache once. These
 bootstrap steps can need network access. They do not need provider credentials.
 
 ```sh
-cargo fetch --locked
-./scripts/check.sh
+make setup
+make check
 ```
 
 The script runs formatting, default tests, Clippy for every target, and rustdoc.
 Cargo runs offline after bootstrap. The GitHub workflow calls the same script
 on macOS and Linux. A workflow definition is not evidence that hosted checks passed.
+
+## Make commands
+
+Run `make` without a target to print help. All command targets are `.PHONY`, so
+a file with the same name cannot prevent a command from running. `.PHONY` does
+not print a message; the default `help` recipe prints the command list.
+
+| Command | Action |
+| --- | --- |
+| `make setup` | Fetch locked dependencies; network access can be required |
+| `make build` | Build the workspace offline |
+| `make run` | Run the default offline fixture |
+| `make cli ARGS="..."` | Pass arguments to the local CLI; no arguments prints CLI help |
+| `make fmt` | Format Rust source files |
+| `make fmt-check` | Check formatting without changes |
+| `make test` | Run workspace tests offline |
+| `make lint` | Run strict Clippy checks for all targets offline |
+| `make docs` | Build API documentation offline with strict rustdoc checks |
+| `make check` | Call the canonical `./scripts/check.sh` quality command |
+| `make clean` | Remove Cargo artifacts; retain `.fishnet` runs and account files |
+
+For fixture options, use `make run ARGS="--scenario negative"`. For inspection,
+use `make cli ARGS="inspect RUN_ID --summary"`. `ARGS` is a local developer
+command-line convenience. It does not change the core's tool authorization.
+Live account and coding commands require explicit CLI arguments. Cargo's
+`--offline` flag controls dependency access, not the application's provider I/O.
+
+Make adds a discoverable entry point without a new task-runner dependency. The
+check script remains the common quality policy for local development and CI.
+Direct Cargo commands and `./scripts/check.sh` remain available without Make.
+
+## Enforced Rust checks
 
 Compiler warnings are errors. Unsafe code and non-ASCII identifiers are forbidden.
 Clippy `all`, `pedantic`, and `nursery` are errors. Additional checks reject
