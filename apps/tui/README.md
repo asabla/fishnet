@@ -6,7 +6,7 @@ Startup makes no model request. The service owns accepted work after detach.
 
 ## Write a task
 
-Type a Rust task in the bottom prompt. Ordinary letters enter text. Press Enter
+Type a Rust task in the prompt. Ordinary letters enter text. Press Enter
 to select exact files the task can change, separated by commas. Leave that field
 blank to prohibit source edits. Enter then prepares the complete host grant.
 Esc returns to the retained prompt. No provider call starts during preparation.
@@ -85,11 +85,16 @@ lock. Commands use host OS permissions; there is no OS sandbox.
 
 ## Display and evidence limits
 
-The interface requires 40 columns and 12 rows. It shows a single transcript,
-compact tool results, independent checks, and a persistent prompt. Task selection,
+The interface requires 40 columns and 12 rows. The start screen centres the
+prompt below the fishnet wordmark. Active tasks use a single transcript column
+with a maximum width of 100 cells and a prompt at the bottom. The model row
+shows the configured request preference, or "host default" when none is set.
+It does not guess the selected provider. Tool results use compact shaded blocks;
+independent checks and authoritative outcomes stay explicit. Task selection,
 file access, grant review, and diagnostics use temporary panels. Explicit state
 labels distinguish verified, unverified, failed, cancelled, and unknown outcomes.
-Model text cannot establish success.
+Model text cannot establish success. Routine connection messages stay in
+details. Errors and uncertain command outcomes remain visible across reconnect.
 
 The view retains 128 transcript entries with 4096-byte, 48-line previews, plus
 256 recent diagnostic lines with 512-byte previews and 16 status entries. The
@@ -105,6 +110,8 @@ FISHNET_LAYOUT_PREVIEW_DIR="$PWD/.fishnet/layout-preview" \
   cargo test -p fishnet-tui --test layout --offline --locked
 ```
 
-The exported HTML is test evidence, not an application web client. It does not
+Each retained row snapshot exports HTML under the same name. Exports do not
+share filenames across tests. The HTML is test evidence, not an application
+web client. It does not
 prove rendering in a native terminal. See [M4 evidence](../../docs/m4-evidence.md)
 for the checks actually run and the remaining qualification limits.

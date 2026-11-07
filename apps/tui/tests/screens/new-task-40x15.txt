@@ -1,15 +1,15 @@
- fishnet  ·  workspace
+  Improve terminal rendering
 
     Tool details remain available
-File access─────────────────────────────
-  Wrap long output and keep approval
-  controls visible when the terminal
-  is resized.
+  File access─────────────────────────
+    Wrap long output and keep
+    approval controls visible when
+    the terminal is resized.
 
 
 
-  Files to change (comma-separated)
-  apps/tui/src/render.rs
-  Blank: no source edits.
-  Named files must change.
-  Enter Review grant · Esc Edit
+    Files to change (comma-separated
+    apps/tui/src/render.rs
+    Blank: no source edits.
+    Named files must change.
+    Enter Review grant · Esc Edit

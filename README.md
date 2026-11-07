@@ -17,7 +17,7 @@ Run fishnet in the project directory. It opens the terminal interface and starts
 a private local service if needed. No second terminal is required. From this
 checkout, `make run` opens the same interface. `make` lists development commands.
 
-Type a Rust task in the bottom prompt. Enter selects exact files to change.
+Type a Rust task in the prompt. Enter selects exact files to change.
 The service prepares formatting, test, Clippy, and documentation checks. Review the full
 provider and file grant before approving it. Startup and preparation do not
 make model requests. Use `/fixture` for an offline example, `/help` for help,

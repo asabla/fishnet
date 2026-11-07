@@ -1,15 +1,15 @@
- fishnet  ·  workspace
+  Improve terminal rendering
 
-Help────────────────────────────────────
-  establish verified success.
+  Help────────────────────────────────
 
-  Leaving
+    Leaving
 
-  Ctrl-C detaches immediately.
-  Accepted work continues.
-  Use fishnet stop outside the TUI to
-  stop the service.
-  Cancellation can leave completed
-  edits. It does not roll them back.
-  Up/Down Scroll  Esc Close
-  Rows 48–57 of 57
+    Ctrl-C detaches immediately.
+    Accepted work continues.
+    Use fishnet stop outside the TUI
+    to stop the service.
+    Cancellation can leave completed
+    edits. It does not roll them
+    back.
+    Up/Down Scroll  Esc Close
+    Rows 54–63 of 63

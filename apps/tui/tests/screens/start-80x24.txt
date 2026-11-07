@@ -1,0 +1,24 @@
+
+
+
+
+
+
+                     █▀▀▀▀ ▀█▀ ▄▀▀▀▀ █   █ █▄  █ █▀▀▀▀ ▀▀█▀▀
+                     █▀▀▀   █   ▀▀▀▄ █▀▀▀█ █ ▀▄█ █▀▀▀    █
+                     ▀     ▀▀▀ ▀▀▀▀  ▀   ▀ ▀   ▀ ▀▀▀▀▀   ▀
+
+
+  │
+  │ ▏Describe a Rust task…
+  │ Rust · requested-model
+  │
+  fishnet                                  / commands   ctrl+p tasks   F1 help
+
+
+
+
+
+
+
+ Ready                                                             fishnet 0.1.0

@@ -1,24 +1,24 @@
- fishnet  ·  workspace
+  Improve terminal rendering
 
-Review host grant───────────────────────────────────────────────────────────────
-  ["apps/tui/src/render.rs"]
-  Protected files:
-  ["tests/behavior.rs"]
+  Review host grant───────────────────────────────────────────────────────────
+    ["apps/tui/src/render.rs"]
+    Protected files:
+    ["tests/behavior.rs"]
 
-  Independent checks: ["test"]
-  Deadline: 5000 ms; model turns: 16; output: 4096 bytes
+    Independent checks: ["test"]
+    Deadline: 5000 ms; model turns: 16; output: 4096 bytes
 
-  Approved commands:
-  test: "/usr/bin/cargo" ["test","--workspace","--offline","--locked"] (120000
-  ms)
+    Approved commands:
+    test: "/usr/bin/cargo" ["test","--workspace","--offline","--locked"]
+    (120000 ms)
 
-  Grant fingerprint: reviewed-grant-fingerprint
+    Grant fingerprint: reviewed-grant-fingerprint
 
-  Approval permits source and command output to be sent to the configured
-  provider.
-  Commands use the host OS permissions.
-  Quality checks establish the listed checks, not every claim about the
-  requested behavior. Review the source diff and add protected behavioral
-  checks when needed.
-  y Approve  n Reject  Esc Close
-  Rows 12–30 of 30
+    Approval permits source and command output to be sent to the configured
+    provider.
+    Commands use the host OS permissions.
+    Quality checks establish the listed checks, not every claim about the
+    requested behavior. Review the source diff and add protected behavioral
+    checks when needed.
+    y Approve  n Reject  Esc Close
+    Rows 12–30 of 30

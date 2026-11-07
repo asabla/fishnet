@@ -21,17 +21,23 @@ references, not claims of compatibility or local execution of either product.
 
 Keep Ratatui, Crossterm, and the current crate boundaries. Add no dependencies.
 Replace global letter shortcuts with ordinary text entry and slash commands.
-Keep the prompt at the bottom. Grow it for multiline text, with a height limit.
+Centre the start prompt below the fishnet wordmark. Keep the active-task prompt
+at the bottom. Grow it for multiline text, with a height limit.
 Keep task selection, file access, grant review, and diagnostics in temporary
 panels. Use a single transcript column, spacing, subtle backgrounds, and explicit
-outcome labels. Preserve the full host grant and its revision before approval.
+outcome labels. Limit the start column to 80 cells and the active column to 100.
+Use a dark surface and a narrow blue edge on the composer, with a request-model
+row and a small project/shortcut row. Unknown model selection is labelled as
+host default. Retain a plain wordmark at narrow widths. Preserve the full host grant and its revision before approval.
 
 Project durable events into bounded typed transcript entries. Group tool and
 check results with their operation identifiers. Keep provider requests and other
 protocol details in diagnostics. Keep the projection separate from the journal;
 it cannot change execution or determine an outcome. Ignore replayed sequences
 and clear the projection when task identity changes. Inspection never reruns a
-tool. Preserve unsent text across selection and late acknowledgements.
+tool. Preserve unsent text across selection and late acknowledgements. Classify client notices as information, connection
+status, or attention. Keep routine connection status in details and retain
+attention notices and uncertain-command counts across reconnect.
 
 The host still accepts independent tasks. Enter first selects exact writable
 files and then prepares the frozen grant. It does not silently grant repository
@@ -44,7 +50,8 @@ and inline diff presentation remain within the M4 usability revision.
 
 See the conversation revision in [M4 evidence](../m4-evidence.md). Input and
 renderer tests are offline. Optional HTML export preserves actual TestBackend
-cell symbols and styles for manual Browser review. It is a test artifact, not a
+cell symbols and styles for manual Browser review. Export by snapshot name so
+parallel tests cannot overwrite another state's preview. It is a test artifact, not a
 new product web UI. PTY behavior, renderer previews, native terminal appearance,
 and live provider evidence are reported separately.
 

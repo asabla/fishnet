@@ -71,6 +71,13 @@ pub enum Modal {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NoticeLevel {
+    Info,
+    Connection,
+    Attention,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ExitIntent {
     Attached,
     WaitingForCommands,
@@ -86,6 +93,7 @@ pub struct App {
     pub composer: Composer,
     pub connected: bool,
     pub notice: String,
+    pub notice_level: NoticeLevel,
     notices: VecDeque<String>,
     pub modal: Option<Modal>,
     pub scroll: u16,
@@ -110,6 +118,7 @@ impl Default for App {
             composer: Composer::default(),
             connected: false,
             notice: "Connecting to the local service.".into(),
+            notice_level: NoticeLevel::Info,
             notices: VecDeque::new(),
             modal: None,
             scroll: 0,
@@ -164,12 +173,18 @@ impl App {
                     self.snapshot = Some(view);
                 }
                 self.notice = "Command acknowledged. Task state comes from the service.".into();
+                self.notice_level = NoticeLevel::Info;
             }
             Message::Connection { connected, detail } => {
                 let changed = self.connected != connected;
                 self.connected = connected;
-                if changed || !connected {
+                if (changed || !connected) && self.notice_level != NoticeLevel::Attention {
                     self.set_notice(safe(&detail, 512));
+                    self.notice_level = if connected {
+                        NoticeLevel::Info
+                    } else {
+                        NoticeLevel::Connection
+                    };
                 }
             }
             Message::Error(error) => self.set_notice(safe(&error, 1024)),
@@ -208,6 +223,7 @@ impl App {
             }
             .into(),
         );
+        self.notice_level = NoticeLevel::Info;
         self.show_tasks = false;
         let action = self.select(view.task_id.clone());
         self.snapshot = Some(view);
@@ -553,6 +569,7 @@ impl App {
     }
 
     fn set_notice(&mut self, notice: String) {
+        self.notice_level = NoticeLevel::Attention;
         self.notice.clone_from(&notice);
         if self.notices.back() != Some(&notice) {
             self.notices.push_back(notice);

@@ -1,24 +1,24 @@
- fishnet  ·  workspace
+  Improve terminal rendering
 
-  › Improve terminal rendering
+  │ Improve terminal rendering
 
-  · read_file apps/tui/src/render.rs
-    File result: apps/tui/src/render.rs  (2 ms)
+  │ Read  apps/tui/src/render.rs
+  │ File result: apps/tui/src/render.rs  (2 ms)
 
-    fishnet
     The task view now keeps the prompt visible while you read earlier output.
 
     Tool details remain available through /details.
 
-File access─────────────────────────────────────────────────────────────────────
-  Wrap long output and keep approval controls visible when the terminal is
-  resized.
+    Independent check · format
+  File access─────────────────────────────────────────────────────────────────
+    Wrap long output and keep approval controls visible when the terminal is
+    resized.
 
 
 
 
-  Files to change (comma-separated)
-  apps/tui/src/render.rs
-  Blank: no source edits.
-  Named files must change.
-  Enter Review grant · Esc Edit
+    Files to change (comma-separated)
+    apps/tui/src/render.rs
+    Blank: no source edits.
+    Named files must change.
+    Enter Review grant · Esc Edit

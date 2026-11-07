@@ -1,0 +1,15 @@
+
+
+
+                 fishnet
+
+
+  │
+  │ ▏Describe a Rust task…
+  │ Rust · requested-model
+  │
+  fishnet    / commands · ctrl+p tasks
+
+
+
+ Ready

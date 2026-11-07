@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt::Write as _;
 
-use fishnet_tui::app::{App, Modal};
 use ratatui::{
     buffer::Buffer,
     style::{Color, Modifier},
@@ -13,24 +12,13 @@ use ratatui::{
 ///
 /// # Errors
 /// Returns a formatting or filesystem error when an export is requested.
-pub fn export(app: &App, buffer: &Buffer) -> Result<(), Box<dyn Error>> {
+pub fn export(name: &str, buffer: &Buffer) -> Result<(), Box<dyn Error>> {
     let Some(directory) = std::env::var_os("FISHNET_LAYOUT_PREVIEW_DIR") else {
         return Ok(());
     };
-    let mode = match app.modal {
-        Some(Modal::Scope { .. }) => "scope",
-        Some(Modal::Review { .. }) => "approval",
-        Some(Modal::Help { .. }) => "help",
-        Some(_) => "dialog",
-        None if app.show_tasks => "tasks",
-        None if app.composer.text.starts_with('/') => "commands",
-        None if !app.composer.text.is_empty() => "composing",
-        None if app.snapshot.is_some() => "conversation",
-        None => "welcome",
-    };
     let area = buffer.area;
     let mut html = format!(
-        "<!doctype html><meta charset=utf-8><title>fishnet {mode} {}x{}</title><style>body{{margin:24px;background:#181818}}pre{{display:inline-block;margin:0;padding:12px;background:#101010;color:#d7d7d7;font:14px/20px Menlo,monospace}}span{{display:inline-block;vertical-align:top}}</style><pre>",
+        "<!doctype html><meta charset=utf-8><title>fishnet {name} {}x{}</title><style>body{{margin:24px;background:#181818}}pre{{display:inline-block;margin:0;padding:12px;background:#101010;color:#d7d7d7;font:14px/20px Menlo,monospace}}span{{display:inline-block;vertical-align:top}}</style><pre>",
         area.width, area.height
     );
     for row in buffer.content.chunks(usize::from(area.width).max(1)) {
@@ -67,10 +55,7 @@ pub fn export(app: &App, buffer: &Buffer) -> Result<(), Box<dyn Error>> {
     html.push_str("</pre>");
     std::fs::create_dir_all(&directory)?;
     std::fs::write(
-        std::path::Path::new(&directory).join(format!(
-            "{mode}-{}x{}-{}.html",
-            area.width, area.height, app.scroll
-        )),
+        std::path::Path::new(&directory).join(format!("{name}.html")),
         html,
     )?;
     Ok(())

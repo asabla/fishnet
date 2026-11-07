@@ -1,3 +1,8 @@
+mod prompt;
+mod theme;
+mod transcript;
+mod wordmark;
+
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -6,13 +11,14 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Padding, Paragraph, Wrap},
 };
 
-use crate::app::{App, COMMANDS, EntryKind, Modal, safe, status};
+use crate::app::{App, Modal, NoticeLevel, safe, status};
 
 const HELP: &str = "Writing\n\nType a Rust task in the prompt. Enter opens file access selection, then the host grant. No provider call starts before approval. Each submission is a separate task; prior task text is not sent as conversation context.\n\nEnter          Prepare task or run slash command\nAlt/Shift-Enter or Ctrl-J  New line\nLeft/Right     Move the text cursor\nHome/End       Start or end of prompt\nCtrl-U         Clear prompt\nTab            Complete a unique slash command\nCtrl-P         Open saved tasks\nPageUp/PageDown Scroll conversation\nEsc            Follow latest output; close a dialog\nF1 / F2        Help / details\n\nCommands\n\n/new       Start a new task\n/tasks     Open saved tasks\n/review    Review pending access\n/cancel    Request cancellation confirmation\n/details   Diagnostics and recent event output\n/fixture   Offline example; no account needed\n/taskfile  Advanced task contract\n/refresh   Refresh connection\n/help      This help\n/quit      Detach after command acknowledgement\n\nApproval\n\ny approves; n rejects; arrows scroll; Esc closes.\nOnly independent host checks can establish verified success.\n\nLeaving\n\nCtrl-C detaches immediately. Accepted work continues.\nUse fishnet stop outside the TUI to stop the service.\nCancellation can leave completed edits. It does not roll them back.";
 
 /// Draw a conversation and a persistent prompt. The service owns task state.
 pub fn draw(frame: &mut Frame<'_>, app: &mut App) {
     let area = frame.area();
+    frame.render_widget(Block::default().style(theme::base()), area);
     if area.width < 40 || area.height < 12 {
         frame.render_widget(
             Paragraph::new("fishnet\nUse at least 40 columns and 12 rows.\nCtrl-C detaches.")
@@ -21,62 +27,140 @@ pub fn draw(frame: &mut Frame<'_>, app: &mut App) {
         );
         return;
     }
-    let prompt_height = prompt_rows(app, area.width.saturating_sub(4))
-        .clamp(1, (area.height / 3).saturating_sub(2))
-        .saturating_add(2);
-    let [heading, body, prompt, state, notice] = Layout::vertical([
-        Constraint::Length(2),
-        Constraint::Min(3),
-        Constraint::Length(prompt_height),
-        Constraint::Length(1),
+    let home = app.snapshot.is_none() && app.selected.is_none() && app.transcript.is_empty();
+    let attention = app.notice_level != NoticeLevel::Info || !app.connected;
+    let [main, alert, state] = Layout::vertical([
+        Constraint::Min(1),
+        Constraint::Length(u16::from(attention)),
         Constraint::Length(1),
     ])
     .areas(area);
-    let body = Rect {
-        x: body.x + 2,
-        width: body.width.saturating_sub(4),
-        ..body
-    };
-    normalize_scroll(app, body, area);
-    frame.render_widget(
-        Paragraph::new(Line::from(vec![
-            Span::styled(" fishnet", Style::default().add_modifier(Modifier::BOLD)),
-            Span::styled(
-                format!("  ·  {}", safe(&app.project, 80)),
-                Style::default().fg(Color::DarkGray),
-            ),
-        ])),
-        heading,
-    );
-    output(frame, app, body);
-    composer(frame, app, prompt);
-    frame.render_widget(Paragraph::new(caption(app, state.width)), state);
-    let hint = if app.notice.is_empty() {
-        "Enter send · / commands · Ctrl-P tasks · Ctrl-C detach"
+    if home {
+        home_screen(frame, app, main);
     } else {
-        &app.notice
-    };
-    frame.render_widget(
-        Paragraph::new(elide(hint, usize::from(notice.width)))
-            .style(Style::default().fg(Color::DarkGray)),
-        notice,
-    );
+        session_screen(frame, app, main);
+    }
+    footer(frame, app, if home { state } else { column(state, 100) });
+    if attention {
+        frame.render_widget(
+            Paragraph::new(elide(
+                &app.notice,
+                usize::from(alert.width.saturating_sub(2)),
+            ))
+            .style(theme::base().fg(Color::Yellow)),
+            Rect {
+                x: alert.x + 1,
+                width: alert.width.saturating_sub(2),
+                ..alert
+            },
+        );
+    }
     if app.show_tasks {
         let inset = dialog_area(area, 24);
         frame.render_widget(Clear, inset);
         task_list(frame, app, inset);
     }
-    if let Some(modal) = &app.modal {
-        dialog(frame, modal, area);
+    if app.modal.is_some() {
+        normalize_dialog(app, area);
+        if let Some(modal) = &app.modal {
+            dialog(frame, modal, area);
+        }
     }
 }
 
-fn normalize_scroll(app: &mut App, body: Rect, area: Rect) {
-    let rows = Paragraph::new(conversation(app))
-        .wrap(Wrap { trim: false })
-        .line_count(body.width);
+fn column(area: Rect, max_width: u16) -> Rect {
+    let width = area.width.saturating_sub(4).min(max_width);
+    Rect::new(
+        area.x + (area.width - width) / 2,
+        area.y,
+        width,
+        area.height,
+    )
+}
+
+fn home_screen(frame: &mut Frame<'_>, app: &App, area: Rect) {
+    let column = column(area, 80);
+    let height = prompt::height(app, column.width, area.height);
+    let logo_height = if column.width >= 42 { 3 } else { 1 };
+    let total = logo_height + 2 + height + 1;
+    let top = column.y + column.height.saturating_sub(total) / 2;
+    wordmark::draw(frame, Rect::new(column.x, top, column.width, logo_height));
+    let prompt = Rect::new(column.x, top + logo_height + 2, column.width, height);
+    prompt::draw(frame, app, prompt);
+    context_line(
+        frame,
+        app,
+        Rect::new(column.x, prompt.bottom(), column.width, 1),
+    );
+    prompt::command_menu(frame, app, prompt);
+}
+
+fn session_screen(frame: &mut Frame<'_>, app: &mut App, area: Rect) {
+    let column = column(area, 100);
+    let height = prompt::height(app, column.width, area.height);
+    let [heading, body, prompt, context] = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(1),
+        Constraint::Length(height),
+        Constraint::Length(1),
+    ])
+    .areas(column);
+    let title = app
+        .tasks
+        .iter()
+        .find(|task| Some(&task.task_id) == app.selected.as_ref())
+        .map_or("fishnet", |task| task.objective.as_str());
+    frame.render_widget(
+        Paragraph::new(elide(title, usize::from(heading.width)))
+            .style(theme::base().add_modifier(Modifier::BOLD)),
+        heading,
+    );
+    normalize_scroll(app, body);
+    transcript::draw(frame, app, body);
+    prompt::draw(frame, app, prompt);
+    context_line(frame, app, context);
+    prompt::command_menu(frame, app, prompt);
+}
+
+fn context_line(frame: &mut Frame<'_>, app: &App, area: Rect) {
+    let keys = if area.width < 60 {
+        "/ commands · ctrl+p tasks"
+    } else {
+        "/ commands   ctrl+p tasks   F1 help"
+    };
+    let available = usize::from(area.width).saturating_sub(keys.len() + 2);
+    let project = elide(&app.project, available);
+    frame.render_widget(Paragraph::new(project).style(theme::muted()), area);
+    frame.render_widget(
+        Paragraph::new(keys)
+            .alignment(ratatui::layout::Alignment::Right)
+            .style(theme::muted()),
+        area,
+    );
+}
+
+fn footer(frame: &mut Frame<'_>, app: &App, area: Rect) {
+    let version = concat!("fishnet ", env!("CARGO_PKG_VERSION"));
+    let width = if area.width >= 80 && app.uncertain.is_empty() {
+        u16::try_from(version.len()).unwrap_or(0)
+    } else {
+        0
+    };
+    let [state, version_area] =
+        Layout::horizontal([Constraint::Min(1), Constraint::Length(width)]).areas(area);
+    frame.render_widget(Paragraph::new(caption(app, state.width)), state);
+    if width > 0 {
+        frame.render_widget(Paragraph::new(version).style(theme::muted()), version_area);
+    }
+}
+
+fn normalize_scroll(app: &mut App, body: Rect) {
+    let rows = transcript::rows(app, body.width);
     let max = rows.saturating_sub(usize::from(body.height));
     app.scroll = app.scroll.min(u16::try_from(max).unwrap_or(u16::MAX));
+}
+
+fn normalize_dialog(app: &mut App, area: Rect) {
     let Some(modal) = &mut app.modal else {
         return;
     };
@@ -118,18 +202,23 @@ fn caption(app: &App, width: u16) -> Line<'static> {
     } else if app.scroll > 0 {
         " · Esc latest"
     } else if label == "RUNNING" && width >= 60 {
-        " · checks still required · / commands"
+        " · checks still required"
     } else {
-        " · / commands"
+        ""
+    };
+    let uncertain = if app.uncertain.is_empty() {
+        String::new()
+    } else {
+        format!(" · {} uncertain · F2 details", app.uncertain.len())
     };
     Line::from(vec![
         Span::styled(format!(" {label}"), state_style(label)),
         Span::styled(
             elide(
-                &format!("{connection}{hint}"),
+                &format!("{connection}{hint}{uncertain}"),
                 usize::from(width).saturating_sub(label.len() + 1),
             ),
-            Style::default().fg(Color::DarkGray),
+            theme::muted(),
         ),
     ])
 }
@@ -155,12 +244,18 @@ fn elide(text: &str, width: usize) -> String {
 }
 
 fn task_list(frame: &mut Frame<'_>, app: &App, area: Rect) {
+    let block = modal_block("Saved tasks").style(theme::surface());
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+    let [body, keys] = Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).areas(inner);
+    frame.render_widget(
+        Paragraph::new("↑↓ Select  Enter Open  Esc Close").style(theme::muted().bg(theme::SURFACE)),
+        keys,
+    );
     if app.tasks.is_empty() {
         frame.render_widget(
-            Paragraph::new("No saved tasks.\n\nEsc returns to the prompt.")
-                .block(panel("Tasks"))
-                .wrap(Wrap { trim: false }),
-            area,
+            Paragraph::new("No saved tasks.").style(theme::surface()),
+            body,
         );
         return;
     }
@@ -171,7 +266,7 @@ fn task_list(frame: &mut Frame<'_>, app: &App, area: Rect) {
             let label = status(task.phase, task.state, false);
             ListItem::new(vec![
                 Line::styled(
-                    elide(&task.objective, usize::from(area.width.saturating_sub(2))),
+                    elide(&task.objective, usize::from(body.width.saturating_sub(2))),
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
                 Line::styled(label, state_style(label)),
@@ -190,247 +285,24 @@ fn task_list(frame: &mut Frame<'_>, app: &App, area: Rect) {
     let mut state = ListState::default().with_selected(selected);
     frame.render_stateful_widget(
         List::new(items)
-            .block(modal_block(
-                "Saved tasks · arrows select · Enter open · Esc close",
-            ))
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+            .style(theme::surface())
+            .highlight_style(theme::surface().bg(Color::Rgb(44, 44, 44)))
             .highlight_symbol("> "),
-        area,
+        body,
         &mut state,
     );
 }
 
-fn conversation(app: &App) -> Vec<Line<'static>> {
-    let mut lines = Vec::new();
-    for entry in &app.transcript {
-        let (prefix, style) = match entry.kind {
-            EntryKind::User => (
-                "› ",
-                Style::default().fg(Color::White).bg(Color::Rgb(42, 42, 42)),
-            ),
-            EntryKind::Assistant => ("  ", Style::default()),
-            EntryKind::Tool => ("· ", Style::default().fg(Color::DarkGray)),
-            EntryKind::Check => ("· ", Style::default().fg(Color::Cyan)),
-            EntryKind::Error => ("! ", Style::default().fg(Color::Red)),
-            EntryKind::Outcome => ("  ", Style::default().add_modifier(Modifier::BOLD)),
-        };
-        if entry.kind == EntryKind::Assistant {
-            lines.push(Line::styled(
-                "  fishnet",
-                Style::default().fg(Color::DarkGray),
-            ));
-        }
-        for (index, text) in entry.text.lines().enumerate() {
-            lines.push(Line::styled(
-                format!("{}{text}", if index == 0 { prefix } else { "  " }),
-                style,
-            ));
-        }
-        lines.push(Line::from(""));
-    }
-    lines
-}
-
-fn output(frame: &mut Frame<'_>, app: &App, area: Rect) {
-    if app.snapshot.is_none() && app.transcript.is_empty() {
-        let welcome = "fishnet\n\nWhat do you want to work on?\n\nDescribe a Rust task below.\n/fixture  Try the offline example\n/tasks    Open saved tasks\n\nFile and command access is reviewed before execution.";
-        let [_, welcome_area, _] = Layout::vertical([
-            Constraint::Fill(1),
-            Constraint::Length(10),
-            Constraint::Fill(2),
-        ])
-        .areas(area);
-        frame.render_widget(
-            Paragraph::new(welcome).wrap(Wrap { trim: false }),
-            welcome_area,
-        );
-        return;
-    }
-    let mut lines = conversation(app);
-    if lines.is_empty() {
-        if let Some(task) = app
-            .tasks
-            .iter()
-            .find(|task| Some(&task.task_id) == app.selected.as_ref())
-        {
-            lines.push(Line::styled(
-                format!("› {}", safe(&task.objective, 4096)),
-                Style::default().add_modifier(Modifier::BOLD),
-            ));
-            lines.push(Line::from(""));
-        }
-        let text = app
-            .snapshot
-            .as_ref()
-            .and_then(|view| view.message.as_deref())
-            .unwrap_or("Waiting for task events. Use /review for pending access.");
-        lines.extend(text.lines().map(|line| Line::from(safe(line, 2048))));
-    }
-    let paragraph = Paragraph::new(lines.clone()).wrap(Wrap { trim: false });
-    let last = paragraph
-        .line_count(area.width)
-        .saturating_sub(usize::from(area.height));
-    let offset = last.saturating_sub(usize::from(app.scroll));
-    message_backgrounds(frame, &lines, area, offset);
-    frame.render_widget(
-        paragraph.scroll((u16::try_from(offset).unwrap_or(u16::MAX), 0)),
-        area,
-    );
-}
-
-fn message_backgrounds(frame: &mut Frame<'_>, lines: &[Line<'_>], area: Rect, offset: usize) {
-    let mut row: usize = 0;
-    for line in lines {
-        let rows = Paragraph::new(line.clone())
-            .wrap(Wrap { trim: false })
-            .line_count(area.width);
-        let start = row.max(offset);
-        let end = (row + rows).min(offset + usize::from(area.height));
-        if let Some(bg) = line.style.bg
-            && start < end
-        {
-            frame.render_widget(
-                Block::default().style(Style::default().bg(bg)),
-                Rect::new(
-                    area.x,
-                    area.y
-                        .saturating_add(u16::try_from(start - offset).unwrap_or(0)),
-                    area.width,
-                    u16::try_from(end - start).unwrap_or(0),
-                ),
-            );
-        }
-        row += rows;
-    }
-}
-
-fn prompt_rows(app: &App, width: u16) -> u16 {
-    u16::try_from(
-        Paragraph::new(prompt_lines(app, Style::default()))
-            .wrap(Wrap { trim: false })
-            .line_count(width),
-    )
-    .unwrap_or(u16::MAX)
-}
-
-fn composer(frame: &mut Frame<'_>, app: &App, area: Rect) {
-    let style = Style::default().fg(Color::White).bg(Color::Rgb(32, 32, 32));
-    frame.render_widget(Block::default().style(style), area);
-    let input = Rect::new(
-        area.x + 3,
-        area.y + 1,
-        area.width.saturating_sub(4),
-        area.height.saturating_sub(2),
-    );
-    frame.render_widget(
-        Paragraph::new("›").style(style),
-        Rect::new(area.x + 1, input.y, 1, 1),
-    );
-    let before = app
-        .composer
-        .text
-        .get(..app.composer.cursor)
-        .unwrap_or_default();
-    let paragraph = Paragraph::new(prompt_lines(app, style))
-        .style(style)
-        .wrap(Wrap { trim: false });
-    let offset = Paragraph::new(format!("{before}▏"))
-        .wrap(Wrap { trim: false })
-        .line_count(input.width)
-        .saturating_sub(usize::from(input.height));
-    frame.render_widget(
-        paragraph.scroll((u16::try_from(offset).unwrap_or(u16::MAX), 0)),
-        input,
-    );
-    command_menu(frame, app, area);
-}
-
-fn prompt_lines(app: &App, style: Style) -> Vec<Line<'_>> {
-    let mut offset = 0;
-    let mut lines = Vec::new();
-    for line in app.composer.text.split('\n') {
-        let end = offset + line.len();
-        if (offset..=end).contains(&app.composer.cursor) {
-            let cursor = app.composer.cursor - offset;
-            let before = line.get(..cursor).unwrap_or_default();
-            let tail = line.get(cursor..).unwrap_or_default();
-            // A trailing space is discarded by the word wrapper. A visible caret
-            // keeps the insertion point present when it wraps past the last column.
-            let next = tail.chars().next().unwrap_or('▏');
-            let rest = tail.get(next.len_utf8()..).unwrap_or_default();
-            let mut spans = vec![
-                Span::raw(before),
-                Span::styled(
-                    next.to_string(),
-                    if tail.is_empty() {
-                        style
-                    } else {
-                        style.add_modifier(Modifier::REVERSED)
-                    },
-                ),
-                Span::raw(rest),
-            ];
-            if app.composer.text.is_empty() {
-                spans.push(Span::styled(
-                    "Describe a Rust task, or / commands",
-                    Style::default().fg(Color::DarkGray),
-                ));
-            }
-            lines.push(Line::from(spans));
-        } else {
-            lines.push(Line::from(line));
-        }
-        offset = end + 1;
-    }
-    lines
-}
-
-fn command_menu(frame: &mut Frame<'_>, app: &App, prompt: Rect) {
-    if !app.composer.text.starts_with('/') || app.composer.text.contains(char::is_whitespace) {
-        return;
-    }
-    let commands = COMMANDS
-        .iter()
-        .filter(|(name, _)| name.starts_with(&app.composer.text))
-        .map(|(name, help)| {
-            Line::from(elide(
-                &format!(" {name:10} {help}"),
-                usize::from(prompt.width),
-            ))
-        })
-        .collect::<Vec<_>>();
-    if commands.is_empty() {
-        return;
-    }
-    let height = u16::try_from(commands.len())
-        .unwrap_or(u16::MAX)
-        .min(prompt.y.saturating_sub(2));
-    let area = Rect::new(
-        prompt.x,
-        prompt.y.saturating_sub(height),
-        prompt.width,
-        height,
-    );
-    frame.render_widget(Clear, area);
-    frame.render_widget(
-        Paragraph::new(commands).style(Style::default().fg(Color::Gray).bg(Color::Rgb(24, 24, 24))),
-        area,
-    );
-}
-
-fn panel(title: &str) -> Block<'_> {
-    Block::default()
-        .borders(Borders::TOP)
-        .border_style(Style::default().fg(Color::DarkGray))
-        .title(title)
-}
 fn state_style(label: &str) -> Style {
+    if label == "Ready" {
+        return theme::muted();
+    }
     let color = if label == "VERIFIED SUCCESS" {
         Color::Green
     } else if matches!(label, "FAILED" | "REJECTED") {
         Color::Red
     } else if matches!(label, "RUNNING" | "QUEUED") {
-        Color::Cyan
+        theme::ACCENT
     } else {
         Color::Yellow
     };
@@ -449,6 +321,7 @@ fn dialog(frame: &mut Frame<'_>, modal: &Modal, area: Rect) {
     };
     let inset = dialog_area(area, height);
     frame.render_widget(Clear, inset);
+    frame.render_widget(Block::default().style(theme::surface()), inset);
     match modal {
         Modal::Scope {
             objective,
@@ -498,14 +371,20 @@ fn dialog(frame: &mut Frame<'_>, modal: &Modal, area: Rect) {
     }
 }
 fn dialog_area(area: Rect, max_height: u16) -> Rect {
+    let column = column(area, 100);
     let height = area.height.saturating_sub(2).min(max_height);
-    Rect::new(area.x, area.y + area.height - height, area.width, height)
+    Rect::new(
+        column.x,
+        area.y + area.height - height,
+        column.width,
+        height,
+    )
 }
 
 fn modal_block(title: &str) -> Block<'_> {
     Block::default()
         .borders(Borders::TOP)
-        .border_style(Style::default().fg(Color::DarkGray))
+        .border_style(theme::muted())
         .padding(Padding::horizontal(2))
         .title(title)
 }
@@ -564,7 +443,7 @@ fn scope_form(frame: &mut Frame<'_>, objective: &str, files: &str, cursor: usize
     frame.render_widget(
         Paragraph::new("Blank: no source edits.\nNamed files must change.")
             .wrap(Wrap { trim: false })
-            .style(Style::default().fg(Color::DarkGray)),
+            .style(theme::muted()),
         explanation,
     );
     frame.render_widget(Paragraph::new("Enter Review grant · Esc Edit"), footer);

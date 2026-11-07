@@ -392,3 +392,25 @@ fn normal_detach_waits_for_acknowledgement_and_immediate_detach_retains_identity
         Some("request pending-two")
     );
 }
+
+#[test]
+fn reconnect_preserves_an_unresolved_command_warning_in_the_main_view() -> TestResult {
+    let mut app = App::default();
+    app.update(Message::CommandError {
+        reference: "request uncertain-one".into(),
+        error: "Outcome unknown. Inspect before retrying.".into(),
+        uncertain: true,
+    });
+    for connected in [false, true] {
+        app.update(Message::Connection {
+            connected,
+            detail: "Connection changed".into(),
+        });
+    }
+    let rendered = screen(&app, 80, 24)?;
+    assert!(rendered.contains("Outcome unknown"));
+    assert!(rendered.contains("1 uncertain"));
+    assert!(rendered.contains("F2 details"));
+    assert_eq!(app.notice_level, fishnet_tui::app::NoticeLevel::Attention);
+    Ok(())
+}

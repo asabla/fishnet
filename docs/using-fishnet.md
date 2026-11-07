@@ -26,7 +26,7 @@ readable by default; use `--json` for scripts.
 
 ## Prepare and review a task
 
-Type the required result in the bottom prompt. Enter opens file access selection.
+Type the required result in the prompt. Enter opens file access selection.
 Name exact files to change, separated by commas. Enter then prepares a Rust task
 with fixed Cargo formatting, tests, Clippy, and documentation checks. It does not start a provider. Review the complete
 file grant, resolved commands, provider, account, model, checks, and limits.

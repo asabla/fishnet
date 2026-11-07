@@ -16,11 +16,15 @@ type TestResult = Result<(), Box<dyn Error>>;
 fn key(app: &mut App, code: KeyCode) -> Option<Action> {
     app.key(KeyEvent::new(code, KeyModifiers::NONE))
 }
-fn draw(app: &mut App, width: u16, height: u16) -> Result<String, Box<dyn Error>> {
+#[derive(Debug)]
+struct Rendered {
+    text: String,
+    buffer: ratatui::buffer::Buffer,
+}
+fn draw(app: &mut App, width: u16, height: u16) -> Result<Rendered, Box<dyn Error>> {
     let mut terminal = Terminal::new(TestBackend::new(width, height))?;
     terminal.draw(|frame| render::draw(frame, app))?;
-    support::export(app, terminal.backend().buffer())?;
-    Ok(terminal
+    let text = terminal
         .backend()
         .buffer()
         .content
@@ -34,18 +38,23 @@ fn draw(app: &mut App, width: u16, height: u16) -> Result<String, Box<dyn Error>
         })
         .collect::<Vec<_>>()
         .join("\n")
-        + "\n")
+        + "\n";
+    Ok(Rendered {
+        text,
+        buffer: terminal.backend().buffer().clone(),
+    })
 }
-fn snapshot(name: &str, rendered: &str) -> TestResult {
+fn snapshot(name: &str, rendered: &Rendered) -> TestResult {
+    support::export(name, &rendered.buffer)?;
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/screens")
         .join(format!("{name}.txt"));
     if std::env::var_os("FISHNET_UPDATE_SNAPSHOTS").is_some() {
         std::fs::create_dir_all(path.parent().ok_or("missing parent")?)?;
-        std::fs::write(&path, rendered)?;
+        std::fs::write(&path, &rendered.text)?;
     }
     assert_eq!(
-        rendered,
+        rendered.text,
         std::fs::read_to_string(path)?,
         "layout {name} changed; review the rendered rows before updating snapshots"
     );
@@ -110,15 +119,23 @@ fn reviewed_layouts_cover_normal_and_small_terminals() -> TestResult {
     app.paste("apps/tui/src/render.rs");
     snapshot("new-task-80x24", &draw(&mut app, 80, 24)?)?;
     let narrow = draw(&mut app, 40, 15)?;
-    assert!(narrow.contains("Files to change"));
-    assert!(narrow.contains("Enter Review"));
+    assert!(narrow.text.contains("Files to change"));
+    assert!(narrow.text.contains("Enter Review"));
     snapshot("new-task-40x15", &narrow)?;
     key(&mut app, KeyCode::Esc);
     key(&mut app, KeyCode::F(1));
     key(&mut app, KeyCode::End);
     let help = draw(&mut app, 40, 15)?;
-    assert!(help.contains("roll them back"));
-    assert!(help.contains("Esc Close"));
+    assert!(
+        help.text
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .contains("roll them back.")
+    );
+    assert!(help.text.contains("Esc Close"));
+    assert!(!help.text.contains("Independent check"));
+    assert!(!help.text.contains("through /details."));
     snapshot("help-end-40x15", &help)?;
     let Some(Modal::Help { scroll: before }) = app.modal else {
         return Err("missing help".into());
@@ -138,14 +155,14 @@ fn wrapped_output_is_readable_at_the_end_and_can_scroll_to_the_start() -> TestRe
     })
     .collect();
     let last = draw(&mut app, 40, 15)?;
-    assert!(last.contains("FINAL_VISIBLE"));
-    assert!(!last.contains("FIRST"));
+    assert!(last.text.contains("FINAL_VISIBLE"));
+    assert!(!last.text.contains("FIRST"));
     for _ in 0..20 {
         key(&mut app, KeyCode::PageUp);
     }
-    assert!(draw(&mut app, 40, 15)?.contains("FIRST"));
+    assert!(draw(&mut app, 40, 15)?.text.contains("FIRST"));
     key(&mut app, KeyCode::Esc);
-    assert!(draw(&mut app, 40, 15)?.contains("FINAL_VISIBLE"));
+    assert!(draw(&mut app, 40, 15)?.text.contains("FINAL_VISIBLE"));
     Ok(())
 }
 
@@ -210,21 +227,28 @@ fn approval_controls_and_outcome_labels_remain_readable_after_resize() -> TestRe
     key(&mut app, KeyCode::Enter);
     for (width, height) in [(40, 12), (60, 15), (80, 24), (120, 36)] {
         let rendered = draw(&mut app, width, height)?;
-        assert!(rendered.contains("y Approve  n Reject  Esc Close"));
-        assert!(!rendered.contains("RUNNING"));
+        assert!(rendered.text.contains("y Approve  n Reject  Esc Close"));
+        assert!(!rendered.text.contains("RUNNING"));
     }
     snapshot("approval-80x24", &draw(&mut app, 80, 24)?)?;
     key(&mut app, KeyCode::End);
     let end = draw(&mut app, 80, 24)?;
     snapshot("approval-end-80x24", &end)?;
-    assert!(end.contains("Approval permits source and command output"));
-    assert!(end.contains("provider."));
-    assert!(end.contains("host OS permissions"));
+    assert!(
+        end.text
+            .contains("Approval permits source and command output")
+    );
+    assert!(end.text.contains("provider."));
+    assert!(end.text.contains("host OS permissions"));
     key(&mut app, KeyCode::Esc);
     let view = app.snapshot.as_mut().ok_or("missing view")?;
     view.phase = Phase::Interrupted;
     view.approval = None;
-    assert!(draw(&mut app, 40, 12)?.contains("UNKNOWN / INTERRUPTED"));
+    assert!(
+        draw(&mut app, 40, 12)?
+            .text
+            .contains("UNKNOWN / INTERRUPTED")
+    );
     Ok(())
 }
 
@@ -234,21 +258,21 @@ fn prompt_and_command_menu_remain_visible_after_editing_and_resize() -> TestResu
     app.paste("Fix the result.\nKeep the existing test.");
     for (width, height) in [(40, 12), (80, 24), (120, 30)] {
         let screen = draw(&mut app, width, height)?;
-        assert!(screen.contains("Fix the result."));
-        assert!(screen.contains("Keep the existing test."));
-        assert!(screen.contains("RUNNING"));
+        assert!(screen.text.contains("Fix the result."));
+        assert!(screen.text.contains("Keep the existing test."));
+        assert!(screen.text.contains("RUNNING"));
     }
     snapshot("multiline-80x24", &draw(&mut app, 80, 24)?)?;
     app.key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
     app.paste("/rev");
     let menu = draw(&mut app, 40, 15)?;
-    assert!(menu.contains("/review"));
-    assert!(menu.contains("› /rev"));
+    assert!(menu.text.contains("/review"));
+    assert!(menu.text.contains("│ /rev"));
     snapshot("commands-40x15", &menu)?;
     key(&mut app, KeyCode::Tab);
     assert_eq!(app.composer.text, "/review");
     key(&mut app, KeyCode::PageUp);
-    assert!(draw(&mut app, 80, 24)?.contains("› /review"));
+    assert!(draw(&mut app, 80, 24)?.text.contains("│ /review"));
     Ok(())
 }
 
@@ -256,21 +280,51 @@ fn prompt_and_command_menu_remain_visible_after_editing_and_resize() -> TestResu
 fn prompt_grows_when_the_cursor_wraps_past_the_last_column() -> TestResult {
     let mut app = App::default();
     app.paste(&"x".repeat(36));
-    let mut terminal = Terminal::new(TestBackend::new(40, 15))?;
-    terminal.draw(|frame| render::draw(frame, &mut app))?;
-    let rows = terminal
-        .backend()
-        .buffer()
-        .content
-        .chunks(40)
-        .filter(|row| {
-            row.first()
-                .is_some_and(|cell| cell.bg == ratatui::style::Color::Rgb(32, 32, 32))
-        })
-        .count();
-    assert_eq!(
-        rows, 4,
-        "the full prompt and its end cursor need two input rows"
+    let screen = draw(&mut app, 40, 15)?;
+    assert!(screen.text.contains(&"x".repeat(32)));
+    assert!(
+        screen.text.contains("xxxx▏"),
+        "the end cursor must remain visible on the second input row"
     );
+    Ok(())
+}
+
+#[test]
+fn start_screen_and_model_preference_adapt_without_claiming_a_provider() -> TestResult {
+    let mut app = App::default();
+    app.default_model = "requested-model".into();
+    app.project = "fishnet".into();
+    app.update(fishnet_tui::app::Message::Connection {
+        connected: true,
+        detail: "Connected".into(),
+    });
+    for (width, height) in [(40, 15), (80, 24), (120, 40)] {
+        let rendered = draw(&mut app, width, height)?;
+        assert!(rendered.text.contains("Rust · requested-model"));
+        assert!(rendered.text.contains("/ commands"));
+        assert!(!rendered.text.contains("Connected"));
+        assert!(!rendered.text.contains("ChatGPT"));
+        snapshot(&format!("start-{width}x{height}"), &rendered)?;
+    }
+    app.paste("/fix");
+    let menu = draw(&mut app, 80, 24)?;
+    assert!(menu.text.contains("/fixture"));
+    assert!(menu.text.contains("Run the offline example"));
+    snapshot("start-commands-80x24", &menu)?;
+    assert!(app.snapshot.is_none());
+    Ok(())
+}
+
+#[test]
+fn saved_task_picker_keeps_its_controls_visible_in_a_narrow_terminal() -> TestResult {
+    let mut app = running();
+    app.key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL));
+    let rendered = draw(&mut app, 40, 15)?;
+    assert!(rendered.text.contains("Saved tasks"));
+    assert!(rendered.text.contains("RUNNING"));
+    assert!(rendered.text.contains("Enter Open  Esc Close"));
+    snapshot("tasks-40x15", &rendered)?;
+    key(&mut app, KeyCode::Esc);
+    assert!(!app.show_tasks);
     Ok(())
 }

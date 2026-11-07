@@ -1,24 +1,24 @@
- fishnet  ·  workspace
-
-
-
-  fishnet
-
-  What do you want to work on?
-
-  Describe a Rust task below.
-  /fixture  Try the offline example
-  /tasks    Open saved tasks
-
-  File and command access is reviewed before execution.
 
 
 
 
 
 
+                     █▀▀▀▀ ▀█▀ ▄▀▀▀▀ █   █ █▄  █ █▀▀▀▀ ▀▀█▀▀
+                     █▀▀▀   █   ▀▀▀▄ █▀▀▀█ █ ▀▄█ █▀▀▀    █
+                     ▀     ▀▀▀ ▀▀▀▀  ▀   ▀ ▀   ▀ ▀▀▀▀▀   ▀
 
- › ▏Describe a Rust task, or / commands
 
- Ready · / commands
-Local service ready. No provider request has been made.
+  │
+  │ ▏Describe a Rust task…
+  │ Rust · host default
+  │
+  workspace                                / commands   ctrl+p tasks   F1 help
+
+
+
+
+
+
+
+ Ready                                                             fishnet 0.1.0

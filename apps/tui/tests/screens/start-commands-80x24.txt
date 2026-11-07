@@ -1,0 +1,24 @@
+
+
+
+
+
+
+                     █▀▀▀▀ ▀█▀ ▄▀▀▀▀ █   █ █▄  █ █▀▀▀▀ ▀▀█▀▀
+                     █▀▀▀   █   ▀▀▀▄ █▀▀▀█ █ ▀▄█ █▀▀▀    █
+                     ▀     ▀▀▀ ▀▀▀▀  ▀   ▀ ▀   ▀ ▀▀▀▀▀   ▀
+
+   /fixture   Run the offline example
+  │
+  │ /fix▏
+  │ Rust · requested-model
+  │
+  fishnet                                  / commands   ctrl+p tasks   F1 help
+
+
+
+
+
+
+
+ Ready                                                             fishnet 0.1.0
