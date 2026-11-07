@@ -58,7 +58,8 @@ impl Cancellation {
         }
     }
 
-    async fn cancelled(&self) {
+    /// Wait until cancellation is requested, without imposing an unrelated deadline.
+    pub async fn cancelled(&self) {
         loop {
             let notified = self.state.asynchronous.notified();
             tokio::pin!(notified);

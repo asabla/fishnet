@@ -99,7 +99,7 @@ pub struct RunView {
     pub statistics: Statistics,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TaskSummary {
     pub task_id: String,
     pub request_id: String,

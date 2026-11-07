@@ -678,12 +678,20 @@ fn not_found() -> ApiError {
 fn view(receipt: Receipt, record: Option<&fishnet_core::RunRecord>) -> TaskView {
     let approval = if receipt.phase == Phase::AwaitingApproval {
         receipt.prepared.as_ref().map(|task| ApprovalView {
-            account: match &receipt.submission.task {
-                TaskRequest::Code { account, .. } => account.clone(),
-                TaskRequest::Fixture { .. } => String::new(),
+            account: match (&receipt.provider, &receipt.submission.task) {
+                (ProviderAccess::Chatgpt { .. }, TaskRequest::Code { account, .. }) => {
+                    account.clone()
+                }
+                (ProviderAccess::ApiKey { .. }, _) => "host API-key profile".into(),
+                (_, TaskRequest::Fixture { .. }) => String::new(),
             },
             model: match &receipt.submission.task {
-                TaskRequest::Code { model, .. } => model.clone(),
+                TaskRequest::Code { model, .. } => {
+                    model.clone().or_else(|| match &receipt.provider {
+                        ProviderAccess::ApiKey { default_model, .. } => default_model.clone(),
+                        ProviderAccess::Chatgpt { .. } => None,
+                    })
+                }
                 TaskRequest::Fixture { .. } => None,
             },
             required_changes: task.workspace.required_changes.clone(),
@@ -697,7 +705,7 @@ fn view(receipt: Receipt, record: Option<&fishnet_core::RunRecord>) -> TaskView 
             checks: task.workspace.checks.clone(),
             provider: match &receipt.provider {
                 ProviderAccess::Chatgpt { .. } => "ChatGPT account".into(),
-                ProviderAccess::ApiKey { endpoint, .. } => endpoint.clone(),
+                ProviderAccess::ApiKey { endpoint, .. } => format!("API key: {endpoint}"),
             },
             fingerprint: fishnet_core::provider::fingerprint(
                 &serde_json::to_vec(&(task, &receipt.provider)).unwrap_or_default(),
