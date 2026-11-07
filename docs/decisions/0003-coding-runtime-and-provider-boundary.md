@@ -43,6 +43,10 @@ Native Responses output remains in history and records, including opaque
 reasoning items and assistant phase. Only completed responses can dispatch a
 function call. Malformed, interrupted, multiple, or reused call IDs fail before
 execution. Requests disable parallel tool calls and automatic HTTP retry.
+A missing content-type header is recorded as `sse-untyped`; the body must still
+satisfy the same bounded SSE and terminal-event checks. A present unsupported
+media type fails. The request states the remaining turn budget and disables tool
+selection on its last turn. Host checks still run after the final response.
 Provider-reported usage remains raw and normalized. Missing usage remains null.
 Prompt-section hashes describe local content; they do not establish cache hits.
 

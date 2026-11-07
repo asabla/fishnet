@@ -1,6 +1,6 @@
 # Implementation plan
 
-M1 is complete as of 2026-11-07. M2 through M7 are pending. Each stage must produce a usable increment and evidence. See [M1 acceptance evidence](m1-evidence.md).
+M1 is complete as of 2026-11-07. M2 is complete as of 2026-11-07. M3 through M7 are pending. Each stage must produce a usable increment and evidence. See [M1 acceptance evidence](m1-evidence.md).
 
 ## M1: Deterministic local vertical slice
 
@@ -22,6 +22,8 @@ Acceptance: a clean checkout builds and tests without secrets; one CLI run emits
 Deliver M1 and stop. Report changes, commands run, limitations, and the next milestone. Do not implement M2 unless requested.
 
 ## M2: Real provider and controlled tool execution
+
+Status: complete on the local macOS ARM64 host. ChatGPT account sign-in, direct inference, controlled edits, independent checks, and restart inspection are verified. Fishnet implemented its own inspection summary feature. See [M2 evidence](m2-evidence.md).
 
 Select one direct API provider. Preserve native content needed across turns, stream and parse tool calls, record usage and capability limits, and add bounded process execution with explicit roots and policy checks. Mock the network in default tests. Add prompt-section fingerprints and provider cache fields.
 

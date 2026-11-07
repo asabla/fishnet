@@ -1,6 +1,6 @@
 # Requirements
 
-Status: recorded user requirements and derived constraints. M1 is implemented; see [acceptance evidence](m1-evidence.md). Later product capabilities remain pending.
+Status: recorded user requirements and derived constraints. M1 and M2 are implemented; see [M1 evidence](m1-evidence.md) and [M2 evidence](m2-evidence.md). Later product capabilities remain pending.
 
 ## Fixed requirements
 
@@ -27,4 +27,4 @@ Status: recorded user requirements and derived constraints. M1 is implemented; s
 
 ## Not decided
 
-No middleware language, database, provider, transport bundle, graph engine, frontend framework, deployment platform, or public license has been selected. See [open decisions](open-decisions.md).
+M2 selects a direct Responses adapter and ChatGPT account access. Other provider protocols remain open. No middleware language, database, service transport bundle, graph engine, frontend framework, deployment platform, or public license has been selected. See [open decisions](open-decisions.md).

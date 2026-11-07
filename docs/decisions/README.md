@@ -1,9 +1,11 @@
 # Architecture decisions
 
-Accepted M1 decisions:
+Accepted decisions:
 
 - [ADR-0001: Rust workspace and quality checks](0001-rust-workspace-and-quality.md)
 - [ADR-0002: Run journals and fixture evidence](0002-run-journal-and-fixture-evidence.md)
+- [ADR-0003: Controlled coding tasks and direct model adapters](0003-coding-runtime-and-provider-boundary.md)
+- [ADR-0004: Direct ChatGPT account authorization](0004-chatgpt-account-access.md)
 
 Fixed user requirements are in [requirements](../requirements.md).
 

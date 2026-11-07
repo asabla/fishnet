@@ -1,13 +1,14 @@
 # fishnet
 
-fishnet is an independent Rust agent harness. M1 runs a scripted model, one
-read-only fixture tool, and an independent completion check. The Rust core owns
+fishnet is an independent Rust agent harness. M1 provides offline fixtures. M2
+adds direct model access, controlled repository edits, approved commands, and
+independent coding checks. The Rust core owns
 the loop, execution policy, task state, cancellation, and local diagnostics.
 
 ## Run M1
 
 Use the pinned Rust toolchain. On a new machine, `cargo fetch --locked` populates
-the dependency cache. Application runs and default tests need no network access
+the dependency cache. Fixture runs and default tests need no network access
 or provider credentials.
 
 ```sh
@@ -47,13 +48,20 @@ and manual code review requirements.
 
 ## Status and boundaries
 
-M1 is complete. See [acceptance evidence](docs/m1-evidence.md),
-[implementation status](docs/implementation.md), and
-[technology decisions](docs/decisions/README.md).
+M1 and M2 are complete on the local macOS ARM64 host. Fishnet used the connected
+ChatGPT account to implement its own `inspect --summary` feature. The host's six
+independent checks passed. See [M2 evidence](docs/m2-evidence.md),
+[M1 evidence](docs/m1-evidence.md), [implementation status](docs/implementation.md),
+and [technology decisions](docs/decisions/README.md).
 
-There is no real model provider, shell execution tool, daemon, TUI, plugin host,
-web UI, memory generation, or policy promotion in M1. The next milestone is M2:
-a direct provider and controlled tool execution. No M2 implementation is included.
+Use [the development workflow](docs/using-fishnet.md) to connect a ChatGPT account
+and prepare a bounded coding task. API-key OpenAI and explicit Responses-compatible
+routes remain separate. Other native provider protocols need adapters and tests.
+
+Approved programs run with your OS permissions. Use reviewed task grants and
+trusted projects. There is no OS sandbox, daemon, TUI, plugin host, knowledge
+backend, memory generation, or policy promotion. The next planned milestone is
+M3: the service and remote-client contract.
 
 Read [AGENTS.md](AGENTS.md), [requirements](docs/requirements.md), and
 [architecture](docs/architecture.md) before making changes.

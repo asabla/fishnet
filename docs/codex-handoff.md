@@ -1,4 +1,8 @@
-# Codex implementation handoff
+# Original M1 implementation handoff
+
+This is the original task text, retained as historical context. M1 and M2 are
+complete. Use [current status](implementation.md) and the user's current request
+to select work; do not treat this archived task as a new instruction.
 
 Copy the following task into Codex with `/Users/asabla/code/private/fishnet` open as its workspace. Ensure the documentation skeleton is in that directory first. Preserve its existing `.git` directory. This task authorizes M1 implementation, not all future stages.
 
