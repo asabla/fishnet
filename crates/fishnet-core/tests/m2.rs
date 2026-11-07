@@ -364,23 +364,26 @@ async fn cancellation_kills_the_owned_process_group_before_returning() -> TestRe
     let cancel = cancellation.clone();
     let directory = root.0.clone();
     let trigger = tokio::spawn(async move {
-        for _ in 0..100 {
+        for _ in 0..400 {
             if directory.join("started").exists() {
                 cancel.cancel();
-                return;
+                return true;
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
         cancel.cancel();
+        false
     });
-    let spec = command(
+    let mut spec = command(
         "tree",
         "/bin/sh",
         &[
             "-c",
-            "printf ready > started; (sleep 1; printf escaped > late) & wait",
+            // The writer must exist before cancellation, and cannot write until execution returns.
+            "/bin/sh -c 'printf ready > started; while [ ! -f release ]; do sleep 0.01; done; printf escaped > late' & wait",
         ],
     );
+    spec.timeout_ms = 5_000;
     let result = process::execute(
         &spec,
         &root.0,
@@ -389,9 +392,11 @@ async fn cancellation_kills_the_owned_process_group_before_returning() -> TestRe
         64,
     )
     .await;
-    trigger.await?;
-    assert!(matches!(result,Err(error) if error.kind == ErrorKind::Cancelled));
+    let ready = trigger.await?;
+    fs::write(root.0.join("release"), "release")?;
     tokio::time::sleep(Duration::from_millis(1_100)).await;
+    assert!(ready, "child writer did not announce readiness");
+    assert!(matches!(result,Err(error) if error.kind == ErrorKind::Cancelled));
     assert!(!root.0.join("late").exists());
     Ok(())
 }
