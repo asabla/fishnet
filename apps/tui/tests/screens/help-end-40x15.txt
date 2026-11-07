@@ -1,0 +1,15 @@
+fishnet
+  ╭Help──────────────────────────────╮
+  │                                  │
+  │Leaving                           │
+  │                                  │
+  │q or Ctrl-C detaches. Accepted    │
+  │work continues in the service.    │
+  │Use fishnet stop outside the TUI  │
+  │to stop the service.              │
+  │Cancellation can leave completed  │
+  │edits. It does not roll them back.│
+  │Up/Down Scroll  Esc Close         │
+  │Rows 52–60 of 60                  │
+  ╰──────────────────────────────────╯
+

@@ -72,8 +72,9 @@ const fn page(snapshot: TaskView, events: Vec<Event>) -> Message {
     })
 }
 fn screen(app: &App, width: u16, height: u16) -> Result<String, Box<dyn Error>> {
+    let mut app = app.clone();
     let mut terminal = Terminal::new(TestBackend::new(width, height))?;
-    terminal.draw(|frame| render::draw(frame, app))?;
+    terminal.draw(|frame| render::draw(frame, &mut app))?;
     Ok(terminal
         .backend()
         .buffer()
@@ -119,6 +120,7 @@ fn outcome_labels_distinguish_all_terminal_and_unknown_states() {
         "AWAITING APPROVAL"
     );
     assert_eq!(status(Phase::Rejected, None, false), "REJECTED");
+    assert_eq!(status(Phase::Failed, None, false), "FAILED");
 }
 
 #[test]
@@ -234,6 +236,15 @@ fn output_is_bounded_sanitized_and_isolated_between_tasks() -> TestResult {
     assert!(app.lines.iter().all(|line| !line.contains('\u{001b}')
         && !line.contains('\u{009b}')
         && !line.contains('\u{202e}')));
+    app.update(page(
+        view(TaskState::Running),
+        vec![event(400, &"x".repeat(1000))],
+    ));
+    assert!(
+        app.lines
+            .iter()
+            .any(|line| line.contains("line preview truncated"))
+    );
     app.select("task-two".into());
     app.update(page(
         view(TaskState::VerifiedSuccess),
@@ -274,7 +285,7 @@ fn resize_and_narrow_terminals_render_without_a_live_connection() -> TestResult 
     for (width, height) in [(120, 36), (80, 24), (60, 15), (40, 10), (0, 0)] {
         let _ = screen(&app, width, height)?;
     }
-    assert!(screen(&app, 40, 10)?.contains("Terminal too small"));
+    assert!(screen(&app, 40, 10)?.contains("Use at least 40 columns"));
     Ok(())
 }
 
@@ -322,4 +333,40 @@ fn uncertain_command_identity_remains_available_after_reconnect() -> TestResult 
     assert!(text.contains("pending-1"));
     assert!(screen(&app, 120, 30)?.contains("Outcome unknown"));
     Ok(())
+}
+
+#[test]
+fn normal_detach_waits_for_acknowledgement_and_immediate_detach_retains_identity() {
+    let mut app = App::default();
+    app.queued("task task-one".into());
+    app.key(key(KeyCode::Char('q')));
+    assert!(!app.quit);
+    assert_eq!(
+        app.exit_intent,
+        fishnet_tui::app::ExitIntent::WaitingForCommands
+    );
+    app.update(Message::Updated(view(TaskState::Cancelled)));
+    assert!(app.quit);
+    assert!(app.pending.is_empty());
+    let mut immediate = App::default();
+    immediate.queued("request pending-one".into());
+    immediate.key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
+    assert!(immediate.quit);
+    assert_eq!(
+        immediate.pending.front().map(String::as_str),
+        Some("request pending-one")
+    );
+    let mut uncertain = App::default();
+    uncertain.queued("request pending-two".into());
+    uncertain.key(key(KeyCode::Char('q')));
+    uncertain.update(Message::CommandError {
+        reference: "request pending-two".into(),
+        error: "Response lost. Inspect before retrying.".into(),
+        uncertain: true,
+    });
+    assert!(uncertain.quit);
+    assert_eq!(
+        uncertain.uncertain.front().map(String::as_str),
+        Some("request pending-two")
+    );
 }

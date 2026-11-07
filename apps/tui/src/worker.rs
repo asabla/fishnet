@@ -98,7 +98,7 @@ async fn run(path: PathBuf, mut commands: mpsc::Receiver<Action>, updates: mpsc:
             _=tick.tick()=>{
                 match refresh(&path,&mut feed,&updates).await {
                     Ok(())=>(),Err(error)=>{
-                        let detail=format!("Service unavailable. Start make daemon or check --connection. {error}");
+                        let detail=format!("Service unavailable. Press r to reconnect; check --connection or run fishnet serve --allow-code to diagnose startup. {error}");
                         if feed.error.as_ref()!=Some(&detail) {
                             if updates.send(Message::Connection {connected:false,detail:detail.clone()}).await.is_err(){return;}
                             feed.error=Some(detail);
@@ -197,11 +197,19 @@ async fn execute(
     let message = match result {
         Ok(message) => message,
         Err(error) if matches!(error.code.as_str(), "disconnected" | "storage_error") => {
-            Message::Error(format!(
-                "Outcome unknown for {reference}: {error}. Reconnect and inspect this identity. No command was retried."
-            ))
+            Message::CommandError {
+                reference: reference.clone(),
+                uncertain: true,
+                error: format!(
+                    "Outcome unknown for {reference}: {error}. Reconnect and inspect this identity. No command was retried."
+                ),
+            }
         }
-        Err(error) => Message::Error(format!("{reference}: {error}")),
+        Err(error) => Message::CommandError {
+            reference: reference.clone(),
+            uncertain: false,
+            error: format!("{reference}: {error}"),
+        },
     };
     send(updates, message).await
 }

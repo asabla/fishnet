@@ -1,0 +1,24 @@
+fishnet  ·  Connected
+RUNNING · Improve terminal rendering
+
+Activity · following────────────────────────────────────────────────────────────
+Task started: Improve terminal rendering
+Model request
+Tool read_file apps/tui/src/render.rs
+File result: apps/tui/src/render.rs
+Model request
+
+
+
+
+
+
+
+
+
+
+
+Task output is retained on disk. Details: v.
+
+n New task   Tab Tasks   a Review   c Cancel
+v Details    ? Help      q Detach

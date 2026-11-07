@@ -1,0 +1,24 @@
+fishnet  ·  Connected
+n New task  ·  f Offline fixture
+
+Workspace───────────────────────────────────────────────────────────────────────
+
+What do you want to work on?
+
+n  New task
+   Describe the change and name exact files.
+   Review the provider, checks, and file access before execution.
+
+f  Try an offline fixture
+   Exercise the full model/tool/check cycle without an account.
+
+ChatGPT setup: fishnet auth login
+Advanced task files: p
+
+Accepted tasks continue when this interface detaches.
+
+
+Local service ready. No provider request has been made.
+
+n New task   Tab Tasks   a Review   c Cancel
+v Details    ? Help      q Detach

@@ -1,0 +1,24 @@
+fishnet
+
+
+
+  ╭New Rust task─────────────────────────────────────────────────────────────╮
+  │Describe the result; name exact files.                                    │
+  │                                                                          │
+  │Task                                                                      │
+  │Wrap long output and keep approval controls visible when the terminal is  │
+  │resized.                                                                  │
+  │                                                                          │
+  │                                                                          │
+  │                                                                          │
+  │                                                                          │
+  │                                                                          │
+  │Files to change (comma-separated)                                         │
+  │apps/tui/src/render.rs                                                    │
+  │Tab Next  Enter Review  Esc Close                                         │
+  │Rust fmt/test/Clippy/docs · Account: default                              │
+  ╰──────────────────────────────────────────────────────────────────────────╯
+
+
+
+

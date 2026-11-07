@@ -1,0 +1,24 @@
+fishnet
+  ╭Review host grant─────────────────────────────────────────────────────────╮
+  │Provider: ChatGPT account                                                 │
+  │Account: default                                                          │
+  │Model: fixture-model                                                      │
+  │Root: "/workspace/fishnet"                                                │
+  │                                                                          │
+  │Objective:                                                                │
+  │Keep the complete grant readable on resize                                │
+  │                                                                          │
+  │Writable files:                                                           │
+  │["apps/tui/src/render.rs"]                                                │
+  │Required changes:                                                         │
+  │["apps/tui/src/render.rs"]                                                │
+  │Protected files:                                                          │
+  │["tests/behavior.rs"]                                                     │
+  │                                                                          │
+  │Independent checks: ["test"]                                              │
+  │Deadline: 5000 ms; model turns: 16; output: 4096 bytes                    │
+  │                                                                          │
+  │y Approve  n Reject  Esc Close                                            │
+  │Rows 1–18 of 30                                                           │
+  ╰──────────────────────────────────────────────────────────────────────────╯
+
