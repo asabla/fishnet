@@ -85,6 +85,7 @@ pub enum ExitIntent {
 
 #[derive(Clone, Debug)]
 pub struct App {
+    pub appearance: crate::appearance::Appearance,
     pub tasks: Vec<TaskSummary>,
     pub selected: Option<String>,
     pub snapshot: Option<TaskView>,
@@ -110,6 +111,7 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         Self {
+            appearance: crate::appearance::Appearance::Color,
             tasks: Vec::new(),
             selected: None,
             snapshot: None,

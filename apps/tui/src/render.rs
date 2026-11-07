@@ -17,6 +17,21 @@ const HELP: &str = "Writing\n\nType a Rust task in the prompt. Enter opens file 
 
 /// Draw a conversation and a persistent prompt. The service owns task state.
 pub fn draw(frame: &mut Frame<'_>, app: &mut App) {
+    draw_content(frame, app);
+    if app.appearance == crate::appearance::Appearance::Monochrome {
+        // NO_COLOR removes backgrounds too. Reverse video keeps inputs and tool
+        // blocks visible using the terminal's own foreground and background.
+        for cell in &mut frame.buffer_mut().content {
+            if matches!(cell.bg, theme::SURFACE | Color::Rgb(44, 44, 44)) {
+                cell.modifier.toggle(Modifier::REVERSED);
+            }
+            cell.fg = Color::Reset;
+            cell.bg = Color::Reset;
+        }
+    }
+}
+
+fn draw_content(frame: &mut Frame<'_>, app: &mut App) {
     let area = frame.area();
     frame.render_widget(Block::default().style(theme::base()), area);
     if area.width < 40 || area.height < 12 {
@@ -211,11 +226,16 @@ fn caption(app: &App, width: u16) -> Line<'static> {
     } else {
         format!(" · {} uncertain · F2 details", app.uncertain.len())
     };
+    let appearance = if app.appearance == crate::appearance::Appearance::Monochrome {
+        " · monochrome · --color always"
+    } else {
+        ""
+    };
     Line::from(vec![
         Span::styled(format!(" {label}"), state_style(label)),
         Span::styled(
             elide(
-                &format!("{connection}{hint}{uncertain}"),
+                &format!("{connection}{hint}{uncertain}{appearance}"),
                 usize::from(width).saturating_sub(label.len() + 1),
             ),
             theme::muted(),

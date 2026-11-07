@@ -312,6 +312,11 @@ fn start_screen_and_model_preference_adapt_without_claiming_a_provider() -> Test
     assert!(menu.text.contains("Run the offline example"));
     snapshot("start-commands-80x24", &menu)?;
     assert!(app.snapshot.is_none());
+    app.key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
+    app.appearance = fishnet_tui::appearance::Appearance::Monochrome;
+    let monochrome = draw(&mut app, 80, 24)?;
+    assert!(monochrome.text.contains("monochrome · --color always"));
+    snapshot("start-monochrome-80x24", &monochrome)?;
     Ok(())
 }
 

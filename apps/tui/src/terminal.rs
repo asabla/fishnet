@@ -9,6 +9,7 @@ use crossterm::{
 
 use crate::{
     app::{Action, App, Message},
+    appearance::ColorMode,
     worker::Worker,
 };
 
@@ -52,10 +53,11 @@ fn parse(mut args: impl Iterator<Item = String>) -> TerminalResult<Option<(PathB
         .map_or_else(|| "/".into(), |name| name.to_string_lossy().into_owned());
     let mut task = None;
     let mut start = true;
+    let mut color = ColorMode::Auto;
     while let Some(option) = args.next() {
         if option == "--help" || option == "-h" {
             println!(
-                "fishnet: terminal interface\nUsage: fishnet [--connection PATH] [--attach TASK_ID] [--task tasks/FILE.json]\n               [--model NAME] [--account LABEL] [--no-start]\nThe local service starts automatically. Explicit --connection only attaches.\nType a Rust task. Enter selects file access, then opens approval review.\nCommands: /fixture, /tasks, /review, /cancel, /details, /help, /quit.\nCtrl-C detaches. Accepted work continues. Use fishnet stop to shut down the service."
+                "fishnet: terminal interface\nUsage: fishnet [--connection PATH] [--attach TASK_ID] [--task tasks/FILE.json]\n               [--model NAME] [--account LABEL] [--no-start] [--color auto|always|never]\nThe local service starts automatically. Explicit --connection only attaches.\nAuto colour respects NO_COLOR; --color always enables the colour theme.\nType a Rust task. Enter selects file access, then opens approval review.\nCommands: /fixture, /tasks, /review, /cancel, /details, /help, /quit.\nCtrl-C detaches. Accepted work continues. Use fishnet stop to shut down the service."
             );
             return Ok(None);
         }
@@ -78,12 +80,17 @@ fn parse(mut args: impl Iterator<Item = String>) -> TerminalResult<Option<(PathB
             "--task" => task = Some(value),
             "--model" => app.default_model = value,
             "--account" => app.account = value,
+            "--color" => {
+                color =
+                    ColorMode::parse(&value).ok_or("--color requires auto, always, or never")?;
+            }
             _ => return Err(format!("unknown TUI option: {option}").into()),
         }
     }
     if let Some(task) = task {
         app.open_code(task);
     }
+    app.appearance = color.apply();
     Ok(Some((path, app, start)))
 }
 
