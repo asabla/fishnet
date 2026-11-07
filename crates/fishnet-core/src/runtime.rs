@@ -91,9 +91,31 @@ pub fn run<P: ModelProvider, F: FnMut(&Event) + Send>(
 /// # Errors
 /// Returns an error for invalid options or a failed durable journal write.
 pub async fn run_async<P: ModelProvider, F: FnMut(&Event) + Send>(
+    options: RunOptions,
+    provider: P,
+    observe: F,
+) -> io::Result<RunSummary> {
+    run_owned(options, provider, observe, None).await
+}
+
+/// Execute a service-owned identity exactly once. Existing journals cannot be replaced.
+///
+/// # Errors
+/// Returns invalid options, a reused identity, or durable storage failures.
+pub async fn run_identified<P: ModelProvider, F: FnMut(&Event) + Send>(
+    options: RunOptions,
+    provider: P,
+    observe: F,
+    run_id: String,
+) -> io::Result<RunSummary> {
+    run_owned(options, provider, observe, Some(run_id)).await
+}
+
+async fn run_owned<P: ModelProvider, F: FnMut(&Event) + Send>(
     mut options: RunOptions,
     mut provider: P,
     mut observe: F,
+    reserved_id: Option<String>,
 ) -> io::Result<RunSummary> {
     options.limits.validate().map_err(invalid)?;
     validate_contract(&options.contract)?;
@@ -117,7 +139,7 @@ pub async fn run_async<P: ModelProvider, F: FnMut(&Event) + Send>(
     }
     let provider_version = provider.version().to_owned();
     let store = options.store.clone();
-    let journal = tokio::task::spawn_blocking(move || Journal::create(&store))
+    let journal = tokio::task::spawn_blocking(move || Journal::create(&store, reserved_id))
         .await
         .map_err(io::Error::other)??;
     let mut executor = Executor {

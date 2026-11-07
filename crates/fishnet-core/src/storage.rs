@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::protocol::{
     CheckStatus, Event, EventData, FIXTURE_REVISION, OperationRequest, OperationResult, Outcome,
@@ -44,18 +44,20 @@ pub(crate) struct Journal {
 }
 
 impl Journal {
-    pub(crate) fn create(store: &Path) -> io::Result<Self> {
+    pub(crate) fn create(store: &Path, reserved_id: Option<String>) -> io::Result<Self> {
         // Sync each new directory's parent, including a newly created store hierarchy.
         ensure_directory(store)?;
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(io::Error::other)?
             .as_nanos();
-        let run_id = format!(
-            "{nanos}-{}-{}",
-            std::process::id(),
-            NEXT_RUN.fetch_add(1, Ordering::Relaxed)
-        );
+        let run_id = reserved_id.unwrap_or_else(|| {
+            format!(
+                "{nanos}-{}-{}",
+                std::process::id(),
+                NEXT_RUN.fetch_add(1, Ordering::Relaxed)
+            )
+        });
         let path = record_path(store, &run_id)?;
         let mut options = OpenOptions::new();
         options.write(true).create_new(true);
@@ -135,7 +137,7 @@ fn sync_directory(_path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Statistics {
     pub provider_attempts: u32,
     pub logical_tool_calls: u32,
@@ -150,7 +152,7 @@ pub struct Statistics {
     pub harness_us: Option<u64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RunRecord {
     pub schema_version: u32,
     pub run_id: String,

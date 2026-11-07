@@ -12,6 +12,8 @@ use fishnet_core::{Cancellation, Limits, RunOptions, Scenario, ScriptedProvider,
 
 const HELP: &str = "fishnet: independent local agent harness
 Usage:
+  fishnet serve [SERVICE_OPTIONS]
+  fishnet task list|submit|status|watch|cancel|approve|reject [TASK_ID] [OPTIONS]
   fishnet auth login|status|logout [--account LABEL] [--auth-dir DIR]
   fishnet models [--account LABEL] [--auth-dir DIR]
   fishnet code --task PATH [--root DIR] [--provider chatgpt|openai|responses]
@@ -123,6 +125,8 @@ fn execute(args: Arguments) -> Result<u8, Box<dyn std::error::Error>> {
 
 fn main() -> ExitCode {
     let result = match env::args().nth(1).as_deref() {
+        Some("serve") => fishnet_service::daemon::launch(env::args().skip(2)).map(|()| 0),
+        Some("task") => fishnet_service::cli::execute(env::args().skip(2)),
         Some("auth") => account::execute(env::args().skip(2), false),
         Some("models") => account::execute(env::args().skip(2), true),
         Some("code") => coding::execute(env::args().skip(2)),
