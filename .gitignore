@@ -1,0 +1,6 @@
+/target/
+/.fishnet/
+/.env
+/.env.*
+!/.env.example
+.DS_Store

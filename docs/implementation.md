@@ -1,0 +1,60 @@
+# Implementation plan
+
+All implementation milestones are pending. The initial package contains documentation only. Each stage must produce a usable increment and evidence; do not create all components at once.
+
+## M1: Deterministic local vertical slice
+
+Goal: exercise the owned execution loop without network access or credentials.
+
+- Create the minimal Rust workspace, CLI, core runtime, protocol types, and test fixture provider.
+- Support a scripted model response that requests a deterministic read-only tool, receives its result, and returns a final response.
+- Add explicit task states, operation IDs, cancellation, deadlines, bounded output, and structured JSON event output.
+- Persist sufficient task/operation state for inspection after restart. Choose and record the minimal storage implementation.
+- Record provider attempts, logical tool calls, results, errors, duration, and task outcome. Use monotonic time for durations.
+- Add a minimal task contract and independent fixture outcome check. Distinguish verified success from unverified model completion.
+- Detect equivalent repeated invalid tool requests against unchanged relevant state. An expected negative test result must not be labeled a tool transport failure.
+- Keep execution tools restricted to fixture operations/read-only workspace access for this stage. Shell execution and network providers are later stages.
+
+Acceptance: a clean checkout builds and tests without secrets; one CLI run emits correlated events and passes an independent check; a cancelled run emits a consistent terminal outcome; restarting permits inspection without rerunning tools; duplicate invalid calls produce a diagnostic incident; failures remain in the run record. Document actual invocation commands once implemented.
+
+Deliver M1 and stop. Report changes, commands run, limitations, and the next milestone. Do not implement M2 unless requested.
+
+## M2: Real provider and controlled tool execution
+
+Select one direct API provider. Preserve native content needed across turns, stream and parse tool calls, record usage and capability limits, and add bounded process execution with explicit roots and policy checks. Mock the network in default tests. Add prompt-section fingerprints and provider cache fields.
+
+Acceptance: opt-in live smoke test works with externally supplied credentials; malformed responses and interrupted streams have defined outcomes; final effective arguments are checked before execution; uncertain side effects are not blindly retried. Measure harness time separately from provider, tool, and user wait.
+
+## M3: Service and remote-client contract
+
+Expose the existing core through a long-running daemon. Move the CLI onto the same command/event contract. Add authentication, command idempotency, reconnect cursors, snapshot recovery, and bounded consumers. Record API/transport decisions. Add a small headless client fixture; a web UI is not required.
+
+Acceptance: a client disconnect does not cancel accepted work; reconnect returns correct state; duplicate submissions do not repeat work; unauthorized reads and commands fail; a slow client cannot cause unbounded memory growth. Multiple clients cannot resolve one approval twice.
+
+## M4: TUI
+
+Build the TUI as a client of M3. Render task state, streamed output, approvals, cancellation, and bounded diagnostic summaries. Keep business logic in the service.
+
+Acceptance: CLI and TUI observe the same session; attach/detach and cancellation preserve state; test terminal rendering and input independently of live model calls.
+
+## M5: Plugins, skills, and middleware
+
+Implement package validation and MCP transports selected in an ADR. Add portable and Codex fixtures, then defined Claude component mappings. Implement ordered typed hooks and observers. Compare extension runtime candidates before choosing one. Include a reference plugin and compatibility report.
+
+Acceptance: path escape and unsupported required components are rejected clearly; mutations precede authorization; handler failure behavior is explicit; cancellation and timeouts are measured; reload does not silently change active policy versions. Test middleware that calls downstream then fails, ensuring no duplicated side effects.
+
+## M6: Workspace knowledge
+
+Implement explicit multiple roots/repository identities and instruction scopes. Add text retrieval and evidence-linked wiki data. Separate memory storage, retrieval, and context engine interfaces. Evaluate graph-assisted retrieval before selecting a graph database.
+
+Acceptance: conflicting instructions resolve by documented scope; source edits/deletions invalidate derived knowledge; cross-repository changes retain starting revisions; facts and inferences stay distinguishable; graph evaluation includes a non-graph baseline.
+
+## M7: Policy experiments
+
+Implement local incident selection, candidate changes, repeatable fresh trials, holdout cases, comparison reports, and policy version rollback. Keep automatic promotion disabled initially.
+
+Acceptance: demonstrate one bounded policy change that reduces unnecessary work while preserving success; include failures and uncertainty; evaluation checks are protected; replay cannot re-execute external writes; every accepted result identifies its inputs and versions.
+
+## Status updates
+
+After each requested milestone, record completion evidence here or link a status document. Do not mark a stage complete from scaffolding or passing tests unrelated to its acceptance criteria.
