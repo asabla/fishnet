@@ -8,8 +8,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use crate::protocol::{
-    CheckStatus, Event, EventData, FIXTURE_REVISION, OperationRequest, OperationResult, Outcome,
-    POLICY_VERSION, SCHEMA_VERSION, TaskState, ToolResult,
+    CheckStatus, Event, EventData, OperationRequest, OperationResult, Outcome, SCHEMA_VERSION,
+    TaskState, ToolResult,
 };
 
 pub const MAX_EVENT_BYTES: usize = 65_536;
@@ -245,13 +245,7 @@ impl Replay {
                     return Err(invalid("duplicate run creation"));
                 }
                 limits.validate().map_err(invalid)?;
-                let supported = if contract.workspace.is_some() {
-                    contract.policy_version == crate::workspace::POLICY
-                } else {
-                    contract.policy_version == POLICY_VERSION
-                        && contract.fixture_revision == FIXTURE_REVISION
-                };
-                if !supported {
+                if !contract.valid() {
                     return Err(invalid("unsupported task contract version"));
                 }
                 self.contract = Some(contract.clone());

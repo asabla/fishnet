@@ -99,7 +99,16 @@ impl OpenAiProvider {
         previous: Option<&ToolResult>,
     ) -> Result<Value, OperationError> {
         if self.history.is_empty() {
-            self.history.push(json!({"role":"user","content":serde_json::to_string(context.contract).map_err(|_| failure("cannot encode task contract"))?}));
+            if let Some(conversation) = &context.contract.conversation {
+                self.history.extend(
+                    conversation
+                        .messages
+                        .iter()
+                        .map(|message| json!({"role":message.role,"content":message.text})),
+                );
+            } else {
+                self.history.push(json!({"role":"user","content":serde_json::to_string(context.contract).map_err(|_| failure("cannot encode task contract"))?}));
+            }
         }
         match (self.pending_call.take(), previous) {
             (Some(call_id), Some(result)) => self.history.push(json!({"type":"function_call_output","call_id":call_id,
@@ -107,9 +116,11 @@ impl OpenAiProvider {
             (None, None) => (),
             _ => return Err(failure("provider/tool result correlation mismatch")),
         }
-        self.history.push(json!({"role":"user","content":format!(
+        if context.contract.conversation.is_none() {
+            self.history.push(json!({"role":"user","content":format!(
             "Execution budget: {} model turns remain, including this turn. Reserve a final text response. Scoped AGENTS.md instructions are already in the instructions above. The host independently repeats all required checks after the final response.",
             context.remaining_provider_calls)}));
+        }
         let mut request = json!({"model":self.model,"instructions":context.instructions,"input":self.history,
             "tools":context.tools,"tool_choice":if context.remaining_provider_calls == 1 { "none" } else { "auto" },"parallel_tool_calls":false,"store":false,"stream":true,
             "include":["reasoning.encrypted_content"],"max_output_tokens":4096});
@@ -118,8 +129,10 @@ impl OpenAiProvider {
                 .as_object_mut()
                 .ok_or_else(|| failure("request is not an object"))?;
             object.remove("max_output_tokens");
-            object.insert("tools".into(),json!([{"type":"namespace","name":"fishnet",
+            if context.contract.conversation.is_none() {
+                object.insert("tools".into(),json!([{"type":"namespace","name":"fishnet",
                 "description":"Tools granted by this fishnet task contract","tools":context.tools}]));
+            }
         }
         if serde_json::to_vec(&request)
             .map_err(|_| failure("cannot encode provider request"))?

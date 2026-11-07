@@ -77,6 +77,7 @@ impl ScriptedProvider {
         delay: Duration,
     ) -> Result<(Self, TaskContract), &'static str> {
         let mut contract = TaskContract {
+            conversation: None,
             objective: "Read greeting from the fixed catalog and verify the recorded result".into(),
             expected_key: "greeting".into(),
             expected_value: Some(EXPECTED_GREETING.into()),

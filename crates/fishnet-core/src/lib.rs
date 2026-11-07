@@ -1,6 +1,7 @@
 //! Local execution. The core owns policy, state, tools, and diagnostics.
 pub mod auth;
 pub mod control;
+pub mod conversation;
 pub mod fixture;
 pub mod process;
 pub mod protocol;

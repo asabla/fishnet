@@ -79,6 +79,8 @@ impl Limits {
 /// The check is selected by the harness, never by the model's final response.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TaskContract {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation: Option<crate::conversation::Context>,
     pub objective: String,
     pub expected_key: String,
     pub expected_value: Option<String>,
@@ -86,6 +88,36 @@ pub struct TaskContract {
     pub fixture_revision: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace: Option<crate::workspace::WorkspaceSpec>,
+}
+
+impl TaskContract {
+    pub(crate) fn valid(&self) -> bool {
+        let supported = match (&self.conversation, &self.workspace) {
+            (Some(context), None) => {
+                context.valid()
+                    && context
+                        .messages
+                        .last()
+                        .is_some_and(|message| message.text == self.objective)
+                    && self.policy_version == crate::conversation::POLICY
+                    && self.fixture_revision == crate::conversation::REVISION
+            }
+            (None, Some(_)) => self.policy_version == crate::workspace::POLICY,
+            (None, None) => {
+                self.policy_version == POLICY_VERSION && self.fixture_revision == FIXTURE_REVISION
+            }
+            (Some(_), Some(_)) => false,
+        };
+
+        supported
+            && self.objective.len() <= 16_384
+            && !self.expected_key.is_empty()
+            && self.expected_key.len() <= 64
+            && self
+                .expected_value
+                .as_ref()
+                .is_none_or(|value| value.len() <= 512)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

@@ -664,6 +664,7 @@ impl TaskFile {
     #[must_use]
     pub fn into_contract(self) -> crate::protocol::TaskContract {
         crate::protocol::TaskContract {
+            conversation: None,
             objective: self.objective,
             expected_key: "workspace".into(),
             expected_value: None,

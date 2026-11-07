@@ -162,3 +162,62 @@ fn api_credentials_cannot_follow_redirects_or_use_insecure_remote_endpoints() {
         assert!(OpenAiProvider::new(endpoint, "fixture".into(), "fixture-token").is_err());
     }
 }
+
+#[tokio::test]
+async fn conversation_sends_only_role_messages_and_no_tools_or_execution_contract() -> TestResult {
+    let mut provider = OpenAiProvider::chatgpt("fixture-model".into(), "fixture-token")?;
+    provider.mock = Some(MockTransport {
+        streams: VecDeque::from([stream(&response(&[
+            json!({"type":"message","role":"assistant","content":[{"type":"output_text","text":"Ada"}]}),
+        ]))]),
+        requests: Vec::new(),
+    });
+    let task = crate::conversation::Context {
+        schema_version: 1,
+        root_task_id: "root".into(),
+        messages: vec![
+            crate::conversation::Message {
+                role: crate::conversation::Role::User,
+                text: "Remember Ada".into(),
+            },
+            crate::conversation::Message {
+                role: crate::conversation::Role::Assistant,
+                text: "Understood".into(),
+            },
+            crate::conversation::Message {
+                role: crate::conversation::Role::User,
+                text: "Which name?".into(),
+            },
+        ],
+    }
+    .into_contract();
+    let mut context = context(&task);
+    context.remaining_provider_calls = 1;
+    provider
+        .respond(
+            context,
+            None,
+            &Cancellation::default(),
+            Instant::now() + Duration::from_secs(5),
+        )
+        .await?;
+    let request = provider
+        .mock
+        .as_ref()
+        .and_then(|mock| mock.requests.first())
+        .ok_or("no request")?;
+    assert_eq!(
+        request.get("input"),
+        Some(&json!([
+            {"role":"user","content":"Remember Ada"},
+            {"role":"assistant","content":"Understood"},
+            {"role":"user","content":"Which name?"}
+        ]))
+    );
+    assert_eq!(request.get("tools"), Some(&json!([])));
+    assert_eq!(request.get("tool_choice"), Some(&json!("none")));
+    assert_eq!(request.get("store"), Some(&json!(false)));
+    assert!(!request.to_string().contains("policy_version"));
+    assert!(!request.to_string().contains("Execution budget"));
+    Ok(())
+}

@@ -58,6 +58,7 @@ impl Root {
                 max_output_bytes: 8_192,
             },
             contract: TaskContract {
+                conversation: None,
                 objective: "Replace original with updated and pass the protected check".into(),
                 expected_key: "workspace".into(),
                 expected_value: None,
