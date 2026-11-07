@@ -7,6 +7,7 @@ Accepted decisions:
 - [ADR-0003: Controlled coding tasks and direct model adapters](0003-coding-runtime-and-provider-boundary.md)
 - [ADR-0004: Direct ChatGPT account authorization](0004-chatgpt-account-access.md)
 - [ADR-0005: Durable local service and bounded client transport](0005-local-service-and-client-contract.md)
+- [ADR-0006: Terminal client and owned client lifecycle](0006-terminal-client-and-lifecycle.md)
 
 Fixed user requirements are in [requirements](../requirements.md).
 

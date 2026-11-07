@@ -13,13 +13,31 @@ Run `make` or `make help` to see the available commands and examples.
 make setup  # Fetch locked dependencies; network access can be required
 make build  # Build offline
 make run    # Run a deterministic offline fixture
-make daemon # Start the local task service
 make check  # Run the complete quality checks
 ```
 
 Use `make run ARGS="--scenario negative"` for another fixture, or
 `make cli ARGS="inspect YOUR_RUN_ID --summary"` to inspect a run.
 See [development policy](docs/development.md) for all targets.
+
+## Terminal interface
+
+Start the local service in one terminal:
+
+```sh
+make daemon
+```
+
+Open its client in another terminal:
+
+```sh
+make tui
+```
+
+Press n for an offline fixture, ? for help, and q to detach. For coding, start
+the service with `make daemon ARGS="--allow-code"`, prepare a reviewed task, and
+use p then a in the TUI. See [TUI usage](apps/tui/README.md) and
+[the self-development workflow](docs/using-fishnet.md).
 
 ## Run M1
 
@@ -64,11 +82,11 @@ for enforced rules and manual code review requirements.
 
 ## Status and boundaries
 
-M1, M2, and M3 are complete on the local macOS ARM64 host. Fishnet used the connected
+M1 through M4 are complete on the local macOS ARM64 host. Fishnet used the connected
 ChatGPT account to implement its own `inspect --summary` feature. The host's six
 independent checks passed. See [M2 evidence](docs/m2-evidence.md),
 [M1 evidence](docs/m1-evidence.md), [implementation status](docs/implementation.md),
-[M3 service evidence](docs/m3-evidence.md), and
+[M3 service evidence](docs/m3-evidence.md), [M4 terminal evidence](docs/m4-evidence.md), and
 [technology decisions](docs/decisions/README.md).
 
 Use [the development workflow](docs/using-fishnet.md) to connect a ChatGPT account
@@ -77,8 +95,9 @@ routes remain separate. Other native provider protocols need adapters and tests.
 
 Approved programs run with your OS permissions. Use reviewed task grants and
 trusted projects. The local daemon and common task client are available; see
-[service usage](services/daemon/README.md). There is no OS sandbox, TUI, plugin
-host, knowledge backend, memory generation, or policy promotion. M4 is next.
+[service usage](services/daemon/README.md). The TUI is available. There is no OS
+sandbox, plugin host, knowledge backend, memory generation, or policy promotion.
+M5 is next.
 
 Read [AGENTS.md](AGENTS.md), [requirements](docs/requirements.md), and
 [architecture](docs/architecture.md) before making changes.

@@ -1,86 +1,102 @@
 # Developing fishnet with fishnet
 
-The starting workflow is a local CLI with an explicit task contract. A daemon,
-TUI, plugin runtime, or external agent engine is not required.
+Use the local service and its terminal client for new interactive work. The
+Rust service owns accepted tasks, execution policy, checks, and records. The
+TUI can detach and reconnect without stopping the task.
 
-## Connect an account
-
-```sh
-cargo run --offline --locked -p fishnet-cli -- auth login
-cargo run --offline --locked -p fishnet-cli -- auth status
-cargo run --offline --locked -p fishnet-cli -- models
-```
-
-Open the printed sign-in URL in your browser. Review the fishnet account and plan
-permissions. Tokens stay in `.fishnet/auth` and must not be pasted into chat or
-committed. Use `--account LABEL` to keep another registration separate. Use
-`auth logout` to stop using the selected account and request session revocation.
-
-The service controls application eligibility and model access. A successful
-login does not establish that an inference request will succeed. ChatGPT mode
-uses the public API and never falls back to API-key billing.
-
-## Prepare a bounded task
-
-The JSON task selects exactly which files can change and which commands can run.
-The completed qualification task, `tasks/bootstrap-summary.json`, grants changes
-to `apps/cli/src/inspection.rs` only. The acceptance source and task contract remain
-protected. Keep the task scope small and review the command list.
-
-The bootstrap task is retained as acceptance evidence. Its feature is already
-implemented. Do not rerun it unchanged: its contract requires a new source change.
-For a new task, create a reviewed contract as described in
-[task authoring](../tasks/README.md).
-
-The original qualification prepared its independent checker before starting
-the model:
+## Connect the host account
 
 ```sh
-mkdir -p .fishnet/bootstrap .fishnet/bin
-rustc --edition 2024 --test tests/bootstrap/inspect_summary.rs -o .fishnet/bootstrap/inspect-summary-check
-cargo build --offline --locked -p fishnet-cli
-cp target/debug/fishnet .fishnet/bin/fishnet-m2
+make cli ARGS="auth login"
+make cli ARGS="auth status"
+make cli ARGS="models"
 ```
 
-The copied harness stays fixed while a task rebuilds the CLI under development.
-The independent checker exercises the rebuilt CLI and checks the requested
-behavior. It does not accept the model's final claim as evidence.
+Complete the printed sign-in URL in your browser. Review the account and plan
+permission. Tokens stay in `.fishnet/auth`. Do not paste them into chat or
+commit them. Account access and direct coding were qualified in M2; see
+[M2 evidence](m2-evidence.md). The service still determines current model access.
+
+## Start an interactive task
+
+In the first terminal:
 
 ```sh
-.fishnet/bin/fishnet-m2 code --task tasks/YOUR_TASK.json
+make daemon ARGS="--allow-code"
 ```
 
-Use `--model NAME` to select a listed account model. Without it, fishnet uses the
-first visible model in the account catalog. Run records retain the actual model,
-provider output, usage, operation IDs, durations, edits, and check results.
-Inspect the emitted task ID from another process. Inspection does not resume work.
+In the second terminal:
 
 ```sh
-fishnet inspect RUN_ID --summary
+make tui
 ```
 
-Account access and a live coding task passed on the development host. See
-[acceptance evidence](m2-evidence.md) for the model, task, failed trials, and limits.
+Use `make daemon` without `--allow-code` for offline fixtures only. Press n in
+the TUI for a fixture. For coding, create a reviewed JSON contract under `tasks/`
+using [task authoring](../tasks/README.md). Press p, enter its path and optional
+model/account, then submit. Press a to inspect the frozen provider, root, file
+grants, commands, limits, and independent checks. y approves; n rejects.
+
+The completed `tasks/bootstrap-summary.json` remains a qualification fixture.
+Its feature is already implemented. Do not rerun it unchanged; it requires a
+new source change. Write a new contract for the next task.
+
+The host repeats the selected checks after the model finishes. A model final
+message cannot establish success. Review the Git diff before committing.
+Cancellation can leave completed edits or partial command effects. Fishnet does
+not roll them back or automatically retry an uncertain operation. Approved
+programs run with the user's OS permissions; use trusted projects.
+
+## Keep the running harness fixed during self-development
+
+Build and copy the service and client before a task rebuilds their source:
+
+```sh
+make build
+mkdir -p .fishnet/bin
+cp target/debug/fishnetd .fishnet/bin/fishnetd
+cp target/debug/fishnet-tui .fishnet/bin/fishnet-tui
+```
+
+Start `.fishnet/bin/fishnetd --allow-code` and `.fishnet/bin/fishnet-tui` in
+separate terminals. These paths assume the default Cargo target directory.
+Restart the service only when you intend to load a new harness version. Existing
+unfinished work remains unknown after a crash; restart never replays it.
+
+## Inspect and reconnect
+
+```sh
+make cli ARGS="task list"
+make cli ARGS="task status TASK_ID"
+make cli ARGS="task watch TASK_ID --after SEQUENCE"
+make tui ARGS="--attach TASK_ID"
+```
+
+q or Ctrl-C in the TUI detaches. Use c then y for explicit cancellation. The CLI
+`task cancel TASK_ID` uses the same service. Inspection and reconnect perform
+reads, not execution. The local `fishnet inspect TASK_ID --summary` command can
+read full journal evidence even when the daemon is stopped. See
+[TUI usage](../apps/tui/README.md) for keys and limits.
 
 ## Other provider routes
 
-API-key access is explicit:
+Configure a service API-key profile explicitly on the host:
 
 ```sh
-fishnet code --task TASK.json --provider openai --model MODEL --key-env OPENAI_API_KEY
-fishnet code --task TASK.json --provider responses --model MODEL --endpoint https://PROVIDER/v1/responses --key-env PROVIDER_API_KEY
+make daemon ARGS="--allow-code --provider openai --key-env OPENAI_API_KEY --model MODEL"
+make daemon ARGS="--allow-code --provider responses --endpoint https://PROVIDER/v1/responses --key-env PROVIDER_API_KEY --model MODEL"
 ```
 
-The second route requires a Responses-compatible API. It is not a general claim
-of compatibility with every model service. Native adapters can be added behind
-`ModelProvider`. Provider-native behavior must have its own tests and live checks.
-ChatGPT credentials cannot be routed through these options automatically.
+These are separate alternatives. Do not start two owners of the same service
+store. The second route requires a Responses-compatible API; it is not universal
+provider compatibility. Native adapters can be added behind `ModelProvider`.
+ChatGPT account mode does not silently switch to API-key billing.
 
-## Review the result
+Use one service host per working tree. That service admits one coding task at a
+time and keeps further approvals pending. Separate hosts and standalone commands
+do not share the execution lock. Do not use them to edit the same tree concurrently.
 
-A verified outcome requires the host's checks and required source changes.
-Review the Git diff before committing. Failure, cancellation, unverified
-completion, and interrupted operations remain inspectable. Commands can have
-partial effects when interrupted. Fishnet does not roll them back or retry an
-uncertain operation. Use trusted projects; approved commands run with your OS
-permissions. This application policy does not provide an OS sandbox.
+Standalone M1 `run` and M2 `code` commands remain available for compatibility.
+They do not gain daemon ownership or reconnect guarantees. Live coding through
+the new TUI was not run during qualification; see [M4 evidence](m4-evidence.md)
+for the independently checked terminal and service behavior.

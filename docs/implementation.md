@@ -1,6 +1,6 @@
 # Implementation plan
 
-M1 is complete as of 2026-11-07. M2 is complete as of 2026-11-07. M3 is complete as of 2026-11-07. M4 through M7 are pending. Each stage must produce a usable increment and evidence. See [M1 acceptance evidence](m1-evidence.md).
+M1 through M4 are complete as of 2026-11-07 on the qualified local host. M5 through M7 are pending. Each stage produces a usable increment and linked acceptance evidence.
 
 ## M1: Deterministic local vertical slice
 
@@ -38,6 +38,8 @@ Expose the existing core through a long-running daemon. Move the CLI onto the sa
 Acceptance: a client disconnect does not cancel accepted work; reconnect returns correct state; duplicate submissions do not repeat work; unauthorized reads and commands fail; a slow client cannot cause unbounded memory growth. Multiple clients cannot resolve one approval twice.
 
 ## M4: TUI
+
+Status: complete on the local macOS ARM64 host. The terminal client shares M3 task state and supports approvals, cancellation, detach/reconnect, bounded output, and explicit outcomes. Offline TestBackend cases and real pseudo-terminal checks passed. See [M4 evidence](m4-evidence.md).
 
 Build the TUI as a client of M3. Render task state, streamed output, approvals, cancellation, and bounded diagnostic summaries. Keep business logic in the service.
 
