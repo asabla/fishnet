@@ -1,15 +1,15 @@
-fishnet
-  ╭New Rust task─────────────────────╮
-  │Describe the result; name exact   │
-  │Task                              │
-  │Wrap long output and keep approval│
-  │controls visible when the terminal│
-  │is resized.                       │
-  │                                  │
-  │                                  │
-  │                                  │
-  │Files to change (comma-separated) │
-  │apps/tui/src/render.rs            │
-  │Tab Next  Enter Review  Esc Close │
-  ╰──────────────────────────────────╯
+ fishnet  ·  workspace
 
+    Tool details remain available
+File access─────────────────────────────
+  Wrap long output and keep approval
+  controls visible when the terminal
+  is resized.
+
+
+
+  Files to change (comma-separated)
+  apps/tui/src/render.rs
+  Blank: no source edits.
+  Named files must change.
+  Enter Review grant · Esc Edit

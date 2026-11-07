@@ -10,6 +10,8 @@ Accepted decisions:
 - [ADR-0006: Terminal client and owned client lifecycle](0006-terminal-client-and-lifecycle.md)
 - [ADR-0007: Interactive entry and guided Rust tasks](0007-interactive-entry-and-guided-rust-tasks.md)
 
+- [ADR-0008: Conversation prompt and durable transcript projection](0008-conversation-prompt-and-transcript.md)
+
 Fixed user requirements are in [requirements](../requirements.md).
 
 Use [template.md](template.md). Number records sequentially when needed. Record proposed, accepted, rejected, or superseded status. Include evidence, alternatives, consequences, and a reversal path. Routine reversible choices do not require stopping for user approval.

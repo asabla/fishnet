@@ -1,0 +1,15 @@
+ fishnet  ·  workspace
+
+  output.
+
+    Tool details remain available
+  through /details.
+
+  · Independent check · format
+    Passed  (12 ms)
+ /review    Review pending file and com…
+
+ › /rev▏
+
+ RUNNING · / commands
+Enter send · / commands · Ctrl-P tasks …

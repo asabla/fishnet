@@ -1,60 +1,71 @@
 # Terminal interface
 
-Run `fishnet` in the project directory. It opens the interface and starts a
-private loopback service if this working tree has no running service. From the
-checkout, `make run` does the same. A second terminal is not required.
+Run `fishnet` in the project directory, or `make run` from this checkout. The
+command opens the interface and starts or reuses its private local service.
+Startup makes no model request. The service owns accepted work after detach.
 
-The local service prepares coding tasks, but no account request or model request
-occurs at startup. Each coding task needs approval of its complete grant.
+## Write a task
 
-## Start a task
-
-Press `n`. Describe the result, then name the exact files to change, separated
-by commas. Leave the files field blank to prohibit source edits. Press Enter to
-prepare the grant. The Rust service selects fixed Cargo formatting, test,
-Clippy, and documentation commands. It records the grant before returning it.
+Type a Rust task in the bottom prompt. Ordinary letters enter text. Press Enter
+to select exact files the task can change, separated by commas. Leave that field
+blank to prohibit source edits. Enter then prepares the complete host grant.
+Esc returns to the retained prompt. No provider call starts during preparation.
 
 Review the provider, model, workspace, file access, commands, checks, and limits.
-Use arrows or PageUp/PageDown to read the full grant. Press `y` to approve or `n`
-to reject. Preparation alone does not contact the provider. Files listed for
-change must differ when checks run. This guided profile requires Cargo.toml.
+Use arrows or PageUp/PageDown to read the grant. Press `y` to approve or `n` to
+reject. The service records and checks the displayed approval revision.
 
-Quality checks establish the listed checks. They do not prove every requirement
-in an objective. Review the diff and use a protected behavioral check when the
-change needs one. Press `p` for an advanced reviewed task file under `tasks/`.
-See [task authoring](../../tasks/README.md).
+The guided profile requires Cargo.toml and selects Cargo formatting, tests,
+Clippy, and documentation checks. Each named file must change. Quality checks
+establish their listed criteria; they do not prove every requirement in an
+objective. Review the diff and protect behavioral checks when needed. Use
+`/taskfile` for a reviewed contract under `tasks/`. See [task authoring](../../tasks/README.md).
 
-## Keys
+Each submission is a separate task. The current service does not send earlier
+conversation text as context for a new submission. This revision corrects the
+prompt and transcript interaction; persistent conversational turns and transient
+token display remain unfinished M4 work.
+
+## Commands and keys
+
+Type `/` to see commands. Type a prefix and press Tab to complete a unique match.
+Enter executes a command. Paste alone never executes one.
+
+| Command | Action |
+| --- | --- |
+| /new | Clear the selected view and start a new task |
+| /tasks | Open saved tasks; arrows select, Enter opens, Esc closes |
+| /review | Review pending file and command access |
+| /cancel | Open cancellation confirmation; `y` confirms |
+| /details | Show identities, diagnostics, timings, and recent event output |
+| /fixture | Run the offline example without an account |
+| /taskfile | Open an advanced task contract |
+| /refresh | Refresh the connection and task list |
+| /help | Show keys and limits |
+| /quit | Detach after outstanding commands are acknowledged |
 
 | Key | Action |
 | --- | --- |
-| n | Describe a new Rust task |
-| f | Run an offline fixture without an account |
-| p | Open an advanced task file |
-| Tab | Show or hide tasks; wide windows can show a sidebar |
-| Up/Down or j/k | Select a task |
-| Enter | Close task selection, or review a pending grant |
-| a | Review the selected pending grant |
-| c, then y | Cancel the selected task |
-| PageUp/PageDown | Scroll wrapped activity |
-| End | Follow latest activity |
-| v | Open identities, timings, diagnostics, and recent status |
-| r | Refresh connection and task list |
-| ? | Open scrollable help |
-| q | Detach after outstanding commands are acknowledged |
-| Ctrl-C | Detach immediately; print identities of uncertain commands |
+| Enter | Prepare the prompt or execute a slash command |
+| Alt-Enter, Shift-Enter, or Ctrl-J | Insert a new line; terminal support varies, so Ctrl-J is the fallback |
+| Left/Right, Home/End | Move the prompt cursor |
+| Backspace/Delete, Ctrl-U | Remove text or clear the prompt |
+| Ctrl-P | Open saved tasks |
+| PageUp/PageDown | Read earlier or later transcript content |
+| Esc | Follow the latest content or close a panel |
+| F1 / F2 | Open help / details |
+| Ctrl-C | Detach immediately; print pending or uncertain command identities |
 
-Forms support Tab/Shift-Tab, cursor movement, Home/End, Backspace/Delete, Ctrl-U,
-and bounded paste. Enter continues to review; a pasted newline never submits.
-Esc closes a dialog. Help, details, and grant review use arrows, PageUp/PageDown,
-Home, and End. Scroll limits are recalculated after resize.
+The prompt keeps unsent text when selecting another task. Startup shows a new
+prompt; it does not silently open a previous task. Use `fishnet attach TASK_ID`
+to attach directly. Esc does not cancel a task. Cancellation can leave edits and
+partial command effects; it does not roll them back.
 
 ## Accounts and connections
 
 Connect a ChatGPT account outside the TUI with `fishnet auth login`. Credentials
-stay in the host's private account store. No credential is entered in a form.
-For other providers, configure the host explicitly with `fishnet serve`; see
-[service usage](../../services/daemon/README.md).
+stay in the host's private store. For other providers, configure the host with
+`fishnet serve`; see [service usage](../../services/daemon/README.md).
 
 ```sh
 fishnet --model MODEL --account LABEL
@@ -66,24 +77,34 @@ fishnet stop
 ```
 
 An explicit connection only attaches; it never starts or replaces a host.
-A task file opens a prefilled form and does not approve execution. The automatic
-host remains alive after detachment. `fishnet stop` requests authenticated
-shutdown, cancels active work, and retains pending approvals. Use one service
-host per working tree. Independent hosts and standalone writers do not share
-its coding execution lock.
+A task file opens a prefilled form and does not approve execution. The host
+remains alive after detach. `fishnet stop` requests shutdown and cancellation of
+active work. Pending approvals remain after restart. Use one service host per
+working tree. Separate hosts and standalone writers do not share its execution
+lock. Commands use host OS permissions; there is no OS sandbox.
 
 ## Display and evidence limits
 
-The interface requires 40 columns and 12 rows. Small windows use one content
-pane. Long output wraps. Modal views clear their background so old borders and
-text do not overlap their controls. Labels distinguish verified, unverified,
-failed, cancelled, and unknown outcomes without relying on color.
+The interface requires 40 columns and 12 rows. It shows a single transcript,
+compact tool results, independent checks, and a persistent prompt. Task selection,
+file access, grant review, and diagnostics use temporary panels. Explicit state
+labels distinguish verified, unverified, failed, cancelled, and unknown outcomes.
+Model text cannot establish success.
 
-The activity view keeps 256 recent lines with 512-byte previews; explicit
-markers report truncation. Full journals remain on disk. Completed durable
-events are displayed; transient token deltas are not implemented. Reconnect
-never repeats a command. A lost response remains uncertain until inspection.
-A failure before core execution is labelled failed; an uncertain interrupted
-execution remains unknown.
+The view retains 128 transcript entries with 4096-byte, 48-line previews, plus
+256 recent diagnostic lines with 512-byte previews and 16 status entries. The
+prompt is limited to 4096 bytes; file fields to 512 bytes. Truncation is marked.
+Full journals remain on disk. Only completed durable events are displayed.
+Reconnect never repeats operations. Replayed event sequences are not appended
+twice. A lost command response remains uncertain until inspection.
 
-See [M4 evidence](../../docs/m4-evidence.md) for exact qualification boundaries.
+For manual colour review, export actual renderer cells with:
+
+```sh
+FISHNET_LAYOUT_PREVIEW_DIR="$PWD/.fishnet/layout-preview" \
+  cargo test -p fishnet-tui --test layout --offline --locked
+```
+
+The exported HTML is test evidence, not an application web client. It does not
+prove rendering in a native terminal. See [M4 evidence](../../docs/m4-evidence.md)
+for the checks actually run and the remaining qualification limits.

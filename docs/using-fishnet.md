@@ -26,9 +26,9 @@ readable by default; use `--json` for scripts.
 
 ## Prepare and review a task
 
-Press n. State the required result and name exact files to change, separated by
-commas. Enter prepares a Rust task with fixed Cargo formatting, tests, Clippy,
-and documentation checks. It does not start a provider. Review the complete
+Type the required result in the bottom prompt. Enter opens file access selection.
+Name exact files to change, separated by commas. Enter then prepares a Rust task
+with fixed Cargo formatting, tests, Clippy, and documentation checks. It does not start a provider. Review the complete
 file grant, resolved commands, provider, account, model, checks, and limits.
 Press y to approve or n to reject.
 
@@ -36,8 +36,8 @@ This profile requires Cargo.toml. It permits at most 32 exact file paths and
 requires each named file to change. Blank files prohibit source edits. Commands
 can still write build artifacts and have the user's OS permissions. Use trusted
 projects. The profile protects existing root AGENTS.md, rust-toolchain.toml,
-and scripts/check.sh. For different grants or protected behavioral checks, press
-p and use a reviewed contract under `tasks/`. See [task authoring](../tasks/README.md).
+and scripts/check.sh. For different grants or protected behavioral checks, use
+/taskfile and a reviewed contract under `tasks/`. See [task authoring](../tasks/README.md).
 
 The host repeats the selected checks after model completion. A final model
 message cannot establish success. Quality checks prove their listed criteria;
@@ -45,7 +45,8 @@ they do not prove every claim about the requested behavior. Review the source
 diff before committing. Cancellation can leave completed edits or partial
 command effects. Fishnet does not roll back or blindly retry uncertain work.
 
-Press f for an offline fixture. Press ? for help. See [TUI usage](../apps/tui/README.md).
+Use /fixture for an offline example and /help for help. Each submission is a
+separate task; earlier messages are not sent as context for a new task. See [TUI usage](../apps/tui/README.md).
 
 ## Inspect, detach, and stop
 
@@ -59,7 +60,7 @@ fishnet stop
 ```
 
 Task commands accept a unique ID prefix. They show readable output by default;
-use `--json` to retain complete machine-readable records. q waits for outstanding
+use `--json` to retain complete machine-readable records. /quit waits for outstanding
 command acknowledgements, then detaches. Ctrl-C detaches immediately and reports
 pending or uncertain command identities. Accepted work continues. `fishnet stop`
 requests service shutdown and cancellation of active work. Pending approvals

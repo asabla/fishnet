@@ -33,9 +33,9 @@ pub fn launch(args: impl Iterator<Item = String>) -> TerminalResult<()> {
         if start {
             let started = fishnet_service::local::ensure(&std::env::current_exe()?)?;
             app.notice = if started {
-                "Local service started. New task: n. Help: ?. Detach: q."
+                "Local service started. Type a task, or / for commands."
             } else {
-                "Connected to the existing local service. New task: n. Help: ?."
+                "Connected. Type a task, or / for commands."
             }
             .into();
         }
@@ -47,12 +47,15 @@ pub fn launch(args: impl Iterator<Item = String>) -> TerminalResult<()> {
 fn parse(mut args: impl Iterator<Item = String>) -> TerminalResult<Option<(PathBuf, App, bool)>> {
     let mut path = PathBuf::from(".fishnet/service/connection.json");
     let mut app = App::default();
+    app.project = std::env::current_dir()?
+        .file_name()
+        .map_or_else(|| "/".into(), |name| name.to_string_lossy().into_owned());
     let mut task = None;
     let mut start = true;
     while let Some(option) = args.next() {
         if option == "--help" || option == "-h" {
             println!(
-                "fishnet: terminal interface\nUsage: fishnet [--connection PATH] [--attach TASK_ID] [--task tasks/FILE.json]\n               [--model NAME] [--account LABEL] [--no-start]\nThe local service starts automatically. Explicit --connection only attaches.\nKeys: n new Rust task, f offline fixture, p task file, a approval, c cancel, ? help, q detach.\nCtrl-C detaches. Accepted work continues. Use fishnet stop to shut down the service."
+                "fishnet: terminal interface\nUsage: fishnet [--connection PATH] [--attach TASK_ID] [--task tasks/FILE.json]\n               [--model NAME] [--account LABEL] [--no-start]\nThe local service starts automatically. Explicit --connection only attaches.\nType a Rust task. Enter selects file access, then opens approval review.\nCommands: /fixture, /tasks, /review, /cancel, /details, /help, /quit.\nCtrl-C detaches. Accepted work continues. Use fishnet stop to shut down the service."
             );
             return Ok(None);
         }

@@ -17,10 +17,11 @@ Run fishnet in the project directory. It opens the terminal interface and starts
 a private local service if needed. No second terminal is required. From this
 checkout, `make run` opens the same interface. `make` lists development commands.
 
-Press n to describe a Rust task and name exact files to change. The service
-prepares formatting, test, Clippy, and documentation checks. Review the full
+Type a Rust task in the bottom prompt. Enter selects exact files to change.
+The service prepares formatting, test, Clippy, and documentation checks. Review the full
 provider and file grant before approving it. Startup and preparation do not
-make model requests. Press f for an offline fixture, ? for help, and q to detach.
+make model requests. Use `/fixture` for an offline example, `/help` for help,
+and `/quit` to detach.
 
 Connect your account with `fishnet auth login`. Credentials stay private. See
 [the development workflow](docs/using-fishnet.md) and [TUI usage](apps/tui/README.md).

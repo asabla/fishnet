@@ -98,7 +98,7 @@ async fn run(path: PathBuf, mut commands: mpsc::Receiver<Action>, updates: mpsc:
             _=tick.tick()=>{
                 match refresh(&path,&mut feed,&updates).await {
                     Ok(())=>(),Err(error)=>{
-                        let detail=format!("Service unavailable. Press r to reconnect; check --connection or run fishnet serve --allow-code to diagnose startup. {error}");
+                        let detail=format!("Service unavailable. Use /refresh to reconnect; check --connection or run fishnet serve --allow-code to diagnose startup. {error}");
                         if feed.error.as_ref()!=Some(&detail) {
                             if updates.send(Message::Connection {connected:false,detail:detail.clone()}).await.is_err(){return;}
                             feed.error=Some(detail);
@@ -171,7 +171,8 @@ async fn connected(feed: &mut Feed, updates: &mpsc::Sender<Message>) -> Result<(
             updates,
             Message::Connection {
                 connected: true,
-                detail: "Connected to the task service. q detaches without cancellation.".into(),
+                detail: "Connected to the task service. Use /quit to detach without cancellation."
+                    .into(),
             },
         )
         .await?;

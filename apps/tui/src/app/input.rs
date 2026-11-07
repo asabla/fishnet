@@ -7,13 +7,27 @@ pub(super) fn paste<const N: usize>(
     text: &str,
 ) {
     if let Some(field) = fields.get_mut(focus) {
-        for ch in text.chars().filter(|ch| !ch.is_control()) {
-            if field.len() + ch.len_utf8() > 512 {
-                break;
-            }
-            field.insert(*cursor, ch);
-            *cursor += ch.len_utf8();
+        insert(field, cursor, text, 512, false);
+    }
+}
+
+pub(super) fn insert(
+    field: &mut String,
+    cursor: &mut usize,
+    text: &str,
+    limit: usize,
+    multiline: bool,
+) {
+    for ch in text
+        .chars()
+        .filter(|ch| !ch.is_control() || (multiline && *ch == '\n'))
+    {
+        let ch = clean_char(ch);
+        if field.len() + ch.len_utf8() > limit {
+            break;
         }
+        field.insert(*cursor, ch);
+        *cursor += ch.len_utf8();
     }
 }
 pub(super) fn edit<const N: usize>(
@@ -30,6 +44,10 @@ pub(super) fn edit<const N: usize>(
     let Some(field) = fields.get_mut(*focus) else {
         return;
     };
+    edit_text(field, cursor, key, 512);
+}
+
+pub(super) fn edit_text(field: &mut String, cursor: &mut usize, key: KeyEvent, limit: usize) {
     let previous = field
         .get(..*cursor)
         .and_then(|text| text.char_indices().last())
@@ -59,11 +77,23 @@ pub(super) fn edit<const N: usize>(
                 .modifiers
                 .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
                 && !ch.is_control()
-                && field.len() + ch.len_utf8() <= 512 =>
+                && field.len() + ch.len_utf8() <= limit =>
         {
+            let ch = clean_char(ch);
             field.insert(*cursor, ch);
             *cursor += ch.len_utf8();
         }
         _ => (),
+    }
+}
+
+fn clean_char(ch: char) -> char {
+    if ch == '\n' {
+        ch
+    } else {
+        super::safe(&ch.to_string(), 4)
+            .chars()
+            .next()
+            .unwrap_or(' ')
     }
 }

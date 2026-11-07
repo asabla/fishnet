@@ -16,6 +16,11 @@ type TestResult = Result<(), Box<dyn Error>>;
 const fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
 }
+fn command(app: &mut App, text: &str) -> Option<Action> {
+    app.paste(text);
+    app.key(key(KeyCode::Enter))
+}
+
 fn view(state: TaskState) -> TaskView {
     TaskView {
         task_id: "task-one".into(),
@@ -127,11 +132,11 @@ fn outcome_labels_distinguish_all_terminal_and_unknown_states() {
 fn detach_and_dialog_escape_never_emit_cancellation() {
     let mut app = App::default();
     app.select("task-one".into());
-    assert!(app.key(key(KeyCode::Char('c'))).is_none());
+    assert!(command(&mut app, "/cancel").is_none());
     assert!(matches!(app.modal, Some(Modal::Cancel(_))));
     assert!(app.key(key(KeyCode::Esc)).is_none());
     assert!(app.modal.is_none());
-    app.key(key(KeyCode::Char('c')));
+    command(&mut app, "/cancel");
     assert!(matches!(app.key(key(KeyCode::Char('y'))),Some(Action::Cancel(id)) if id=="task-one"));
     app.open_code("tasks/change.json".into());
     assert!(
@@ -140,7 +145,7 @@ fn detach_and_dialog_escape_never_emit_cancellation() {
     );
     assert!(app.quit);
     let mut other = App::default();
-    assert!(other.key(key(KeyCode::Char('q'))).is_none());
+    assert!(command(&mut other, "/quit").is_none());
     assert!(other.quit);
 }
 
@@ -176,7 +181,7 @@ fn approval_review_shows_the_grant_and_uses_its_revision() -> TestResult {
     let mut app = App::default();
     app.select("task-one".into());
     app.update(page(pending(), Vec::new()));
-    app.key(key(KeyCode::Char('a')));
+    command(&mut app, "/review");
     let Modal::Review { text, .. } = app.modal.as_ref().ok_or("review missing")? else {
         return Err("wrong modal".into());
     };
@@ -198,11 +203,24 @@ fn approval_review_shows_the_grant_and_uses_its_revision() -> TestResult {
     assert!(
         matches!(app.key(key(KeyCode::Char('y'))),Some(Action::Approve {id,decision}) if id=="task-one" && decision.approve && decision.expected_revision==7)
     );
-    app.key(key(KeyCode::Char('a')));
+    command(&mut app, "/review");
     assert!(
         matches!(app.key(key(KeyCode::Char('n'))),Some(Action::Approve {decision,..}) if !decision.approve)
     );
     Ok(())
+}
+
+#[test]
+fn accepted_scope_clears_only_the_prompt_that_prepared_its_grant() {
+    let mut app = App::default();
+    app.paste("Improve behavior");
+    app.update(Message::Submitted(pending()));
+    assert!(app.composer.text.is_empty());
+    assert!(matches!(app.modal, Some(Modal::Review { .. })));
+    let mut changed = App::default();
+    changed.paste("Another unsent task");
+    changed.update(Message::Submitted(pending()));
+    assert_eq!(changed.composer.text, "Another unsent task");
 }
 
 #[test]
@@ -301,7 +319,11 @@ fn task_selection_and_key_releases_preserve_one_explicit_action() {
             objective: "fixture".into(),
         })
         .to_vec();
-    assert!(matches!(app.update(Message::Tasks(tasks)),Some(Action::Select(id)) if id=="first"));
+    assert!(app.update(Message::Tasks(tasks)).is_none());
+    assert!(app.selected.is_none());
+    command(&mut app, "/tasks");
+    assert!(matches!(app.key(key(KeyCode::Enter)), Some(Action::Select(id)) if id == "first"));
+    command(&mut app, "/tasks");
     let mut released = key(KeyCode::Down);
     released.kind = KeyEventKind::Release;
     assert!(app.key(released).is_none());
@@ -326,7 +348,7 @@ fn uncertain_command_identity_remains_available_after_reconnect() -> TestResult 
         connected: true,
         detail: "Connected".into(),
     });
-    assert!(app.key(key(KeyCode::Char('v'))).is_none());
+    assert!(command(&mut app, "/details").is_none());
     let Modal::Notice { text, .. } = app.modal.as_ref().ok_or("no status history")? else {
         return Err("wrong modal".into());
     };
@@ -339,7 +361,7 @@ fn uncertain_command_identity_remains_available_after_reconnect() -> TestResult 
 fn normal_detach_waits_for_acknowledgement_and_immediate_detach_retains_identity() {
     let mut app = App::default();
     app.queued("task task-one".into());
-    app.key(key(KeyCode::Char('q')));
+    command(&mut app, "/quit");
     assert!(!app.quit);
     assert_eq!(
         app.exit_intent,
@@ -358,7 +380,7 @@ fn normal_detach_waits_for_acknowledgement_and_immediate_detach_retains_identity
     );
     let mut uncertain = App::default();
     uncertain.queued("request pending-two".into());
-    uncertain.key(key(KeyCode::Char('q')));
+    command(&mut uncertain, "/quit");
     uncertain.update(Message::CommandError {
         reference: "request pending-two".into(),
         error: "Response lost. Inspect before retrying.".into(),

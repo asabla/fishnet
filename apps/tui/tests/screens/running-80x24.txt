@@ -1,24 +1,24 @@
-fishnet  ·  Connected
-RUNNING · Improve terminal rendering
+ fishnet  ·  workspace
 
-Activity · following────────────────────────────────────────────────────────────
-Task started: Improve terminal rendering
-Model request
-Tool read_file apps/tui/src/render.rs
-File result: apps/tui/src/render.rs
-Model request
+  › Improve terminal rendering
 
+  · read_file apps/tui/src/render.rs
+    File result: apps/tui/src/render.rs  (2 ms)
 
+    fishnet
+    The task view now keeps the prompt visible while you read earlier output.
 
+    Tool details remain available through /details.
 
-
-
-
+  · Independent check · format
+    Passed  (12 ms)
 
 
 
 
-Task output is retained on disk. Details: v.
 
-n New task   Tab Tasks   a Review   c Cancel
-v Details    ? Help      q Detach
+
+ › ▏Describe a Rust task, or / commands
+
+ RUNNING · checks still required · / commands
+Enter send · / commands · Ctrl-P tasks · Ctrl-C detach.

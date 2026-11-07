@@ -1,6 +1,10 @@
+mod composer;
 mod input;
+mod transcript;
+pub use composer::{COMMANDS, Composer};
 use std::collections::VecDeque;
 use std::fmt::Write as _;
+pub use transcript::{Entry, EntryKind, MAX_ENTRIES};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use fishnet_core::{Event, Limits};
@@ -40,9 +44,9 @@ pub enum Message {
 
 #[derive(Clone, Debug)]
 pub enum Modal {
-    Draft {
-        fields: [String; 2],
-        focus: usize,
+    Scope {
+        objective: String,
+        files: String,
         cursor: usize,
     },
     Code {
@@ -78,6 +82,8 @@ pub struct App {
     pub selected: Option<String>,
     pub snapshot: Option<TaskView>,
     pub lines: VecDeque<String>,
+    pub transcript: VecDeque<Entry>,
+    pub composer: Composer,
     pub connected: bool,
     pub notice: String,
     notices: VecDeque<String>,
@@ -90,6 +96,8 @@ pub struct App {
     pub uncertain: VecDeque<String>,
     pub default_model: String,
     pub account: String,
+    pub project: String,
+    last_sequence: Option<u64>,
 }
 impl Default for App {
     fn default() -> Self {
@@ -98,6 +106,8 @@ impl Default for App {
             selected: None,
             snapshot: None,
             lines: VecDeque::new(),
+            transcript: VecDeque::new(),
+            composer: Composer::default(),
             connected: false,
             notice: "Connecting to the local service.".into(),
             notices: VecDeque::new(),
@@ -110,6 +120,8 @@ impl Default for App {
             uncertain: VecDeque::new(),
             default_model: String::new(),
             account: "default".into(),
+            project: "workspace".into(),
+            last_sequence: None,
         }
     }
 }
@@ -124,10 +136,19 @@ impl App {
                 }
                 if page.gap {
                     self.lines.clear();
+                    self.transcript.clear();
+                    self.last_sequence = None;
                     self.set_notice("Event history gap. Snapshot recovered; loading retained events. Full journal is on disk.".into());
                 }
                 for event in page.events {
+                    if self
+                        .last_sequence
+                        .is_some_and(|last| event.sequence <= last)
+                    {
+                        continue;
+                    }
                     self.append(&event);
+                    self.last_sequence = Some(event.sequence);
                 }
                 if let Some(message) = &page.snapshot.message
                     && self.snapshot.as_ref().and_then(|old| old.message.as_ref()) != Some(message)
@@ -136,28 +157,7 @@ impl App {
                 }
                 self.snapshot = Some(page.snapshot);
             }
-            Message::Submitted(view) => {
-                self.acknowledge(&format!("request {}", view.request_id));
-                self.set_notice(
-                    if view.approval.is_some() {
-                        "Task prepared. Review the grant before execution."
-                    } else {
-                        "Task accepted. Its outcome will appear below."
-                    }
-                    .into(),
-                );
-                self.show_tasks = false;
-                let action = self.select(view.task_id.clone());
-                self.snapshot = Some(view);
-                if self
-                    .snapshot
-                    .as_ref()
-                    .is_some_and(|view| view.approval.is_some())
-                {
-                    self.open_review();
-                }
-                return Some(action);
-            }
+            Message::Submitted(view) => return Some(self.submitted(view)),
             Message::Updated(view) => {
                 self.acknowledge(&format!("task {}", view.task_id));
                 if self.selected.as_deref() == Some(&view.task_id) {
@@ -191,6 +191,36 @@ impl App {
         None
     }
 
+    fn submitted(&mut self, view: TaskView) -> Action {
+        if view
+            .approval
+            .as_ref()
+            .is_some_and(|grant| grant.objective == self.composer.text.trim())
+        {
+            self.composer = Composer::default();
+        }
+        self.acknowledge(&format!("request {}", view.request_id));
+        self.set_notice(
+            if view.approval.is_some() {
+                "Task prepared. Review the grant before execution."
+            } else {
+                "Task accepted. Its outcome will appear below."
+            }
+            .into(),
+        );
+        self.show_tasks = false;
+        let action = self.select(view.task_id.clone());
+        self.snapshot = Some(view);
+        if self
+            .snapshot
+            .as_ref()
+            .is_some_and(|view| view.approval.is_some())
+        {
+            self.open_review();
+        }
+        action
+    }
+
     fn update_tasks(&mut self, tasks: Vec<TaskSummary>) -> Option<Action> {
         self.tasks = tasks;
         if let Some(prefix) = self.selected.clone()
@@ -206,13 +236,8 @@ impl App {
                 return Some(self.select(task.task_id.clone()));
             }
             self.selected = None;
-            self.set_notice("Task prefix has no unique match. Press Tab and select a task.".into());
+            self.set_notice("Task prefix has no unique match. Use /tasks to select a task.".into());
             return None;
-        }
-        if self.selected.is_none()
-            && let Some(first) = self.tasks.first()
-        {
-            return Some(self.select(first.task_id.clone()));
         }
         None
     }
@@ -235,57 +260,23 @@ impl App {
         if self.modal.is_some() {
             return self.modal_key(key);
         }
-        match key.code {
-            KeyCode::Esc | KeyCode::Enter if self.show_tasks => self.show_tasks = false,
-            KeyCode::Char('q') | KeyCode::Esc => {
-                if self.pending.is_empty() {
-                    self.quit = true;
-                } else {
-                    self.exit_intent = ExitIntent::WaitingForCommands;
-                    self.set_notice("Waiting for command acknowledgements before detaching. Ctrl-C detaches immediately; Esc returns to the task.".into());
+        if self.show_tasks {
+            return self.task_key(key.code);
+        }
+        self.prompt_key(key)
+    }
+
+    fn task_key(&mut self, key: KeyCode) -> Option<Action> {
+        match key {
+            KeyCode::Esc => self.show_tasks = false,
+            KeyCode::Enter => {
+                self.show_tasks = false;
+                if self.selected.is_none() {
+                    return self.navigate(0);
                 }
             }
-            KeyCode::Tab => self.show_tasks = !self.show_tasks,
-            KeyCode::Down | KeyCode::Char('j') => return self.navigate(1),
-            KeyCode::Up | KeyCode::Char('k') => return self.navigate(-1),
-            KeyCode::PageUp => {
-                self.scroll = self.scroll.saturating_add(10);
-            }
-            KeyCode::PageDown => self.scroll = self.scroll.saturating_sub(10),
-            KeyCode::End => {
-                self.scroll = 0;
-            }
-            KeyCode::Char('r') => return Some(Action::Refresh),
-            KeyCode::Char('f') => return self.fixture(),
-            KeyCode::Char('n') => {
-                self.modal = Some(Modal::Draft {
-                    fields: [String::new(), String::new()],
-                    focus: 0,
-                    cursor: 0,
-                });
-            }
-            KeyCode::Char('p') => self.open_code(String::new()),
-            KeyCode::Char('a') | KeyCode::Enter => self.open_review(),
-            KeyCode::Char('c') => {
-                if let Some(id) = &self.selected {
-                    self.modal = Some(Modal::Cancel(id.clone()));
-                }
-            }
-            KeyCode::Char('v') => {
-                let mut text = self.details();
-                text.push_str(&self.notice);
-                for previous in self
-                    .notices
-                    .iter()
-                    .rev()
-                    .filter(|message| *message != &self.notice)
-                {
-                    text.push_str("\n\n");
-                    text.push_str(previous);
-                }
-                self.modal = Some(Modal::Notice { text, scroll: 0 });
-            }
-            KeyCode::Char('?') => self.modal = Some(Modal::Help { scroll: 0 }),
+            KeyCode::Down => return self.navigate(1),
+            KeyCode::Up => return self.navigate(-1),
             _ => (),
         }
         None
@@ -320,11 +311,10 @@ impl App {
                 focus,
                 cursor,
             }) => input::paste(fields, *focus, cursor, text),
-            Some(Modal::Draft {
-                fields,
-                focus,
-                cursor,
-            }) => input::paste(fields, *focus, cursor, text),
+            Some(Modal::Scope { files, cursor, .. }) => {
+                input::insert(files, cursor, text, 512, false);
+            }
+            None if !self.show_tasks => self.composer.paste(text),
             _ => (),
         }
     }
@@ -334,6 +324,8 @@ impl App {
         self.selected = Some(id.clone());
         self.snapshot = None;
         self.lines.clear();
+        self.transcript.clear();
+        self.last_sequence = None;
         self.scroll = 0;
         Action::Select(id)
     }
@@ -348,7 +340,11 @@ impl App {
             .position(|task| Some(&task.task_id) == self.selected.as_ref())
             .unwrap_or(0);
         let next = index
-            .saturating_add_signed(direction)
+            .saturating_add_signed(if self.selected.is_none() {
+                0
+            } else {
+                direction
+            })
             .min(self.tasks.len().saturating_sub(1));
         self.tasks
             .get(next)
@@ -410,15 +406,15 @@ impl App {
                 input::edit(fields, focus, cursor, event);
                 None
             }
-            Modal::Draft {
-                fields,
-                focus,
+            Modal::Scope {
+                objective,
+                files,
                 cursor,
             } => {
                 if key == KeyCode::Enter {
-                    return self.submit_draft(fields);
+                    return self.submit_draft(objective.clone(), files);
                 }
-                input::edit(fields, focus, cursor, event);
+                input::edit_text(files, cursor, event, 512);
                 None
             }
             Modal::Review {
@@ -464,21 +460,9 @@ impl App {
         action
     }
 
-    fn submit_draft(&mut self, fields: &[String; 2]) -> Option<Action> {
-        let objective = fields.first().cloned().unwrap_or_default();
-        if objective.trim().is_empty() {
-            self.set_notice("Describe the task before continuing.".into());
-            self.modal = Some(Modal::Draft {
-                fields: fields.clone(),
-                focus: 0,
-                cursor: objective.len(),
-            });
-            return None;
-        }
-        let files = fields
-            .get(1)
-            .into_iter()
-            .flat_map(|value| value.split(','))
+    fn submit_draft(&mut self, objective: String, files: &str) -> Option<Action> {
+        let files = files
+            .split(',')
             .map(str::trim)
             .filter(|path| !path.is_empty())
             .map(String::from)
@@ -579,6 +563,7 @@ impl App {
     }
 
     fn append(&mut self, event: &Event) {
+        transcript::append(&mut self.transcript, event);
         let description = describe(&event.data);
         let mut lines = description.lines();
         for line in lines.by_ref().take(24) {
