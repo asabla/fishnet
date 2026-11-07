@@ -468,3 +468,46 @@ async fn file_pages_use_available_budget_and_bound_json_escaping() -> TestResult
     }
     Ok(())
 }
+
+#[test]
+fn restart_after_an_unrecorded_edit_result_preserves_effect_and_unknown_state() -> TestResult {
+    let root = Root::new()?;
+    let result = run(
+        root.options(),
+        Steps(VecDeque::from([edit(), final_reply()])),
+        |_| (),
+    )?;
+    let store = root.0.join("runs");
+    let record = inspect(&store, &result.run_id)?;
+    let mut prefix = Vec::new();
+    let mut pending = None;
+    for event in record.events {
+        serde_json::to_writer(&mut prefix, &event)?;
+        prefix.push(b'\n');
+        if matches!(
+            event.data,
+            EventData::OperationStarted {
+                request: OperationRequest::Tool { .. }
+            }
+        ) {
+            pending = event.operation_id;
+            break;
+        }
+    }
+    let pending = pending.ok_or("edit start missing")?;
+    // Simulate a crash after the file effect but before a complete result record.
+    prefix.extend_from_slice(b"{\"schema_version\":");
+    let journal = fishnet_core::storage::record_path(&store, &result.run_id)?;
+    fs::write(&journal, &prefix)?;
+    for _ in 0..2 {
+        let recovered = inspect(&store, &result.run_id)?;
+        assert_eq!(recovered.state, TaskState::Running);
+        assert!(recovered.incomplete && recovered.partial_tail);
+        assert!(recovered.outcome.is_none());
+        assert_eq!(recovered.pending_operation_ids, vec![pending.clone()]);
+        assert_eq!(recovered.statistics.tool_results, 0);
+        assert_eq!(fs::read_to_string(root.0.join("work.txt"))?, "updated\n");
+        assert_eq!(fs::read(&journal)?, prefix);
+    }
+    Ok(())
+}
