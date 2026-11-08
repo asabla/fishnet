@@ -8,7 +8,7 @@ use crossterm::{
 };
 
 use crate::{
-    app::{Action, App, Message},
+    app::{Action, App, Message, Modal},
     appearance::ColorMode,
     worker::Worker,
 };
@@ -32,17 +32,34 @@ pub fn launch(args: impl Iterator<Item = String>) -> TerminalResult<()> {
             return Err("fishnet requires an interactive terminal; use fishnet --help or fishnet tasks for headless access".into());
         }
         if start {
-            let started = fishnet_service::local::ensure(&std::env::current_exe()?)?;
-            app.notice = if started {
-                "Local service started. Type a task, or / for commands."
-            } else {
-                "Connected. Type a task, or / for commands."
-            }
-            .into();
+            startup_notice(
+                &mut app,
+                fishnet_service::local::ensure(&std::env::current_exe()?)?,
+            );
         }
         run_terminal(path, app)?;
     }
     Ok(())
+}
+
+fn startup_notice(app: &mut App, startup: fishnet_service::local::Startup) {
+    use fishnet_service::local::Startup;
+    match startup {
+        Startup::Started => {
+            app.notice = "Local service started. Type a message, or / for commands.".into();
+        }
+        Startup::Connected => app.notice = "Connected. Type a message, or / for commands.".into(),
+        Startup::UpgradeRequired => {
+            let text = "The running service needs a restart for chat.\n\nSaved tasks and pending approvals are still available.\nNo task was sent, stopped, or repeated.\n\nPress Esc, then /tasks to inspect existing work.\nAfter active tasks finish, use /quit, run fishnet stop,\nthen run make tui or fishnet again.";
+            app.update(Message::Error(text.into()));
+            if app.modal.is_none() {
+                app.modal = Some(Modal::Notice {
+                    text: text.into(),
+                    scroll: 0,
+                });
+            }
+        }
+    }
 }
 
 fn parse(mut args: impl Iterator<Item = String>) -> TerminalResult<Option<(PathBuf, App, bool)>> {
@@ -182,5 +199,22 @@ fn dispatch(app: &mut App, worker: &Worker, action: Action) {
         ));
     } else if let Some(reference) = reference {
         app.queued(reference);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn an_older_service_opens_inspection_with_an_upgrade_notice() {
+        let mut app = App::default();
+        app.paste("Retain this draft");
+        startup_notice(&mut app, fishnet_service::local::Startup::UpgradeRequired);
+        assert!(!app.quit);
+        assert!(app.pending.is_empty());
+        assert_eq!(app.composer.text, "Retain this draft");
+        assert!(
+            matches!(&app.modal, Some(Modal::Notice {text,..}) if text.contains("No task was sent, stopped, or repeated.") && text.contains("fishnet stop"))
+        );
     }
 }

@@ -111,21 +111,30 @@ impl Client {
         ))
         .await
     }
+    /// Detect an older service without submitting a task.
+    ///
+    /// # Errors
+    /// Returns transport, authorization, and protocol errors. A missing route is unsupported.
+    pub async fn supports_conversation(&self) -> Result<bool> {
+        conversation_support(self.get("v1/capabilities").await)
+    }
+
     /// Check protocol support before a conversation can be submitted.
     ///
     /// # Errors
     /// Returns a local, not-sent error when the host needs an upgrade or is unavailable.
     pub async fn require_conversation(&self) -> Result<()> {
-        let capabilities: Vec<String> = self.get("v1/capabilities").await.map_err(|error| {
-                ApiError::new("not_sent", &format!("Conversation was not sent. Check the service version; finish active work, then run fishnet stop and reopen fishnet. {}", error.message))
-            })?;
-        if !capabilities.iter().any(|name| name == "conversation-v1") {
-            return Err(ApiError::new(
+        match self.supports_conversation().await {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(ApiError::new(
                 "not_sent",
-                "This service does not support conversations. Finish active work, run fishnet stop, then reopen fishnet.",
-            ));
+                "This service needs a restart before chat. Your message was not sent. Finish active work, detach with /quit, run fishnet stop, then reopen fishnet.",
+            )),
+            Err(error) => Err(ApiError::new(
+                "not_sent",
+                &format!("Your message was not sent. Cannot check service capabilities: {error}"),
+            )),
         }
-        Ok(())
     }
     async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
         self.request::<(), T>(Method::GET, path, None).await
@@ -156,7 +165,7 @@ impl Client {
                 "service request failed; reconnect and inspect before repeating a command",
             )
         })?;
-        let success = response.status().is_success();
+        let status = response.status();
         let mut bytes = Vec::new();
         while let Some(chunk) = response
             .chunk()
@@ -168,19 +177,41 @@ impl Client {
             }
             bytes.extend_from_slice(&chunk);
         }
-        let envelope: Envelope<serde_json::Value> = serde_json::from_slice(&bytes)
-            .map_err(|_| ApiError::invalid("service returned invalid JSON"))?;
-        if envelope.schema_version != API_VERSION {
-            return Err(ApiError::invalid("unsupported service API version"));
-        }
-        if !success {
-            return Err(serde_json::from_value(envelope.data)
-                .unwrap_or_else(|_| ApiError::invalid("invalid service error")));
-        }
-        serde_json::from_value(envelope.data)
-            .map_err(|_| ApiError::invalid("service response does not match its contract"))
+        decode_response(status, &bytes)
     }
 }
 fn safe_id(id: &str) -> Result<()> {
     crate::contract::validate_key(id)
 }
+
+fn conversation_support(result: Result<Vec<String>>) -> Result<bool> {
+    match result {
+        Ok(capabilities) => Ok(capabilities.iter().any(|name| name == "conversation-v1")),
+        Err(error) if error.code == "not_found" => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+fn decode_response<T: DeserializeOwned>(status: reqwest::StatusCode, bytes: &[u8]) -> Result<T> {
+    // Older Axum hosts return an empty 404 for unknown routes. That is a
+    // missing capability, not malformed successful JSON or a sent command.
+    let envelope: Envelope<serde_json::Value> = serde_json::from_slice(bytes).map_err(|_| {
+        if status == reqwest::StatusCode::NOT_FOUND {
+            ApiError::new("not_found", "service route was not found")
+        } else {
+            ApiError::invalid("service returned invalid JSON")
+        }
+    })?;
+    if envelope.schema_version != API_VERSION {
+        return Err(ApiError::invalid("unsupported service API version"));
+    }
+    if !status.is_success() {
+        return Err(serde_json::from_value(envelope.data)
+            .unwrap_or_else(|_| ApiError::invalid("invalid service error")));
+    }
+    serde_json::from_value(envelope.data)
+        .map_err(|_| ApiError::invalid("service response does not match its contract"))
+}
+
+#[cfg(test)]
+mod tests;

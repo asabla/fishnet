@@ -45,6 +45,8 @@ The conversation revision provides a multiline prompt, slash commands, typed tra
 
 The subsequent 105-test quality gate and isolated PTY conversation/restart check passed. The message workflow now uses bounded persistent conversations with one provider consent per conversation. Plain messages bypass file selection; `/code` keeps explicit code grants. F2 opens full consent details. Conversation mode cannot read files or run commands and cannot infer verified success. See [ADR-0010](decisions/0010-conversation-consent-and-history.md).
 
+The following 108-test quality gate includes legacy capability-response checks and startup notice coverage. The actual repository service was upgraded after confirming it had no active tasks. All five pending approvals and receipt/journal hashes were preserved. The exact `make tui` entry point was checked in a real PTY. An older service now opens with an upgrade notice and permits inspection; startup does not stop it automatically.
+
 Transient token display, rich Markdown, inline diffs, and revised native terminal appearance remain unfinished or unqualified. See [M4 evidence](m4-evidence.md) and [ADR-0008](decisions/0008-conversation-prompt-and-transcript.md).
 
 Build the TUI as a client of M3. Render task state, streamed output, approvals, cancellation, and bounded diagnostic summaries. Keep business logic in the service.

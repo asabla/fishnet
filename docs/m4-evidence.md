@@ -483,3 +483,43 @@ or native font and terminal appearance. Replies appear after completion;
 transient text, rich Markdown, inline diffs, and dynamic coding permissions remain
 M4 work. No M5 work was added. Conversation records remain session data; no
 memory, skill, or policy is generated. See [ADR-0010](decisions/0010-conversation-consent-and-history.md).
+
+## Existing-service startup correction (2026-11-08)
+
+The user's `make tui` failed before terminal initialization. The new client
+reached a running daemon from an earlier binary. That daemon returned an empty
+HTTP 404 for `/v1/capabilities`; the client reported invalid JSON and the startup
+helper propagated the error. The earlier fresh-host fixture tests did not cover
+this mixed-version state. Installing a binary had not replaced the running host.
+
+The client now treats a missing capability route as unsupported. It still
+rejects malformed successful responses, unauthorized responses, and unsupported
+API versions. Local startup returns a typed upgrade state. The TUI opens a clear
+notice and permits saved-task inspection. Unsupported conversation submissions
+remain blocked before POST. Startup does not stop, replace, or replay host work.
+
+Checks actually run:
+
+- `./scripts/check.sh` passed: formatting, 108 default tests, all-target strict
+  Clippy, and rustdoc. Three new tests cover legacy responses, invalid and
+  unauthorized responses, and the non-submitting startup notice.
+- A real PTY invoked `make tui ARGS=--color always` in the actual checkout while
+  its earlier daemon was still running. The TUI opened, displayed the upgrade
+  notice, opened saved tasks, and detached with exit code 0.
+- Read-only task inspection found five pending approvals and no accepted or
+  executing tasks. The process arguments confirmed the default
+  `fishnet serve --allow-code` host. That idle host was stopped and restarted
+  with the current checkout binary. All five approvals remained pending. All
+  receipt and journal hashes were unchanged. No task was approved or replayed.
+- A second real PTY invoked the exact `make tui` command without extra options.
+  It opened the Chat prompt and detached with exit code 0. Record hashes remained
+  unchanged, and the terminal settings were restored.
+- `make install` replaced the installed command offline.
+
+The current default service is left running for normal use. No provider request
+was made. Local evidence is retained under `.fishnet/m4-upgrade/`, including
+`verify.py`, `result.json`, `legacy.txt`, `legacy.pty`, `current.txt`,
+`make-tui-exact.txt`, and `make-tui-exact.pty`. Quality output is retained in
+`.fishnet/upgrade-check-final.log`. The PTY evidence establishes startup,
+inspection, and detach behavior. It does not establish native terminal pixel
+appearance or live conversation compatibility. M4 remains active.

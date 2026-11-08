@@ -90,7 +90,11 @@ above from scripts. The standalone utility behavior remains unchanged.
 
 The authenticated `/v1/capabilities` route advertises `conversation-v1`. A new
 client checks it before submitting chat. An older host must be restarted after
-active work finishes; clients do not replace it or retry a possibly sent command.
+active work finishes. A missing capability route is treated as unsupported,
+including the empty HTTP 404 returned by older Axum hosts. The TUI opens with
+an upgrade notice and retains task inspection. Clients do not replace the host
+or retry a possibly sent command. Invalid successful JSON and authorization
+failures remain distinct errors.
 
 `TaskRequest::Chat` contains a message, optional parent task ID, requested model,
 and account label. Root messages wait for provider consent. A completed approved

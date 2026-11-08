@@ -8,6 +8,13 @@ use crate::{
     contract::{ApiError, Result},
 };
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Startup {
+    Started,
+    Connected,
+    UpgradeRequired,
+}
+
 /// Connect to this working tree's service, or start the same executable in service mode.
 ///
 /// Coding preparation is enabled, but every coding task still requires grant approval.
@@ -15,7 +22,7 @@ use crate::{
 ///
 /// # Errors
 /// Returns unsafe storage, process startup, listener, or service readiness errors.
-pub fn ensure(executable: &Path) -> Result<bool> {
+pub fn ensure(executable: &Path) -> Result<Startup> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -32,12 +39,9 @@ async fn ready() -> bool {
         .is_ok_and(|r| r.is_ok())
 }
 
-async fn ensure_async(executable: &Path) -> Result<bool> {
+async fn ensure_async(executable: &Path) -> Result<Startup> {
     if ready().await {
-        Client::connect(Path::new(".fishnet/service/connection.json"))?
-            .require_conversation()
-            .await?;
-        return Ok(false);
+        return existing().await;
     }
     let log = super::store::launch_log(Path::new(".fishnet/service"))?;
     let errors = log.try_clone().map_err(|_| ApiError::storage())?;
@@ -62,12 +66,12 @@ async fn ensure_async(executable: &Path) -> Result<bool> {
             std::thread::spawn(move || {
                 let _ = child.wait();
             });
-            return Ok(true);
+            return Ok(Startup::Started);
         }
         if child.try_wait().map_err(|_| ApiError::storage())?.is_some() {
             // Another starting client may have won the exclusive store lock.
             if ready().await {
-                return Ok(false);
+                return existing().await;
             }
             return Err(startup_error());
         }
@@ -85,4 +89,13 @@ fn startup_error() -> ApiError {
         "service_start",
         "local service did not become ready; see .fishnet/service/daemon.log or run fishnet serve --allow-code",
     )
+}
+
+async fn existing() -> Result<Startup> {
+    let client = Client::connect(Path::new(".fishnet/service/connection.json"))?;
+    Ok(if client.supports_conversation().await? {
+        Startup::Connected
+    } else {
+        Startup::UpgradeRequired
+    })
 }

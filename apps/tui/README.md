@@ -107,7 +107,7 @@ fishnet tui --no-start
 fishnet stop
 ```
 
-A service from an earlier binary must be restarted before chat works. Finish active work, run `fishnet stop`, then reopen fishnet. Pending grants and journals remain. The client checks `conversation-v1` before sending a chat request. It never retries a submission to an incompatible host.
+A service from an earlier binary must be restarted before chat works. The TUI stays open with an upgrade notice, so saved tasks and pending approvals remain inspectable. Startup does not stop or replace that service. Finish active work, detach, run `fishnet stop`, then reopen fishnet. Pending grants and journals remain. The client checks `conversation-v1` before sending a chat request. It never retries a submission to an incompatible host.
 
 An explicit connection only attaches; it never starts or replaces a host.
 A task file opens a prefilled form and does not approve execution. The host
